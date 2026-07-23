@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trade Journal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #4f8ef7;
+    --accent-dim: #2a4a8a;
+    --green: #29d97a;
+    --red: #f74f4f;
+    --text: #e4e8ff;
+    --muted: #8890b0;
+    --radius: 8px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    letter-spacing: -0.3px;
+  }
+
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+  /* ── Paste area ── */
+  .paste-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .paste-section label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  textarea {
+    width: 100%;
+    height: 140px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    padding: 10px 12px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted); }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+
+  button {
+    padding: 8px 18px;
+    border-radius: var(--radius);
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s;
+  }
+
+  button:hover { opacity: 0.88; }
+
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Controls row ── */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+  }
+
+  .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
+
+  .ctrl-group label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  input[type="date"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13px;
+    padding: 6px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="date"]:focus { border-color: var(--accent); }
+
+  .preset-row { display: flex; gap: 6px; margin-top: 4px; }
+
+  .btn-preset {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-preset:hover { border-color: var(--accent); color: var(--accent); }
+
+  select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 13px;
+    padding: 6px 10px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  select:focus { border-color: var(--accent); }
+
+  .spacer { flex: 1; }
+
+  /* ── Data view tabs ── */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 0;
+  }
+
+  .tab-btn {
+    padding: 9px 18px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .tab-btn:hover { color: var(--accent); opacity: 1; }
+
+  .tab-btn.active {
+    background: var(--surface2);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .tab-panel { margin-bottom: 20px; }
+
+  /* ── Summary cards ── */
+  .summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    min-width: 140px;
+    flex: 1;
+  }
+
+  .card-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .card-value {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .neutral { color: var(--text); }
+
+  /* ── Table ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead tr {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  th:hover { color: var(--accent); }
+  th.sorted { color: var(--accent); }
+
+  th .sort-icon { margin-left: 4px; opacity: 0.6; font-size: 10px; }
+
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tr:hover td { background: var(--surface2); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .badge-sell { background: rgba(247,79,79,0.15); color: var(--red); }
+  .badge-buy  { background: rgba(41,217,122,0.15); color: var(--green); }
+
+  .trade-id { font-family: monospace; color: var(--muted); font-size: 12px; }
+
+  /* ── Empty / error states ── */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+  }
+
+  .empty-icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-state p { font-size: 13px; line-height: 1.6; }
+
+  .error-banner {
+    background: rgba(247,79,79,0.12);
+    border: 1px solid rgba(247,79,79,0.3);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    color: var(--red);
+    font-size: 13px;
+    margin: 24px 0 16px;
+    display: none;
+  }
+
+  .parse-status-tag {
+    display: none;
+    width: fit-content;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-top: 8px;
+  }
+  .parse-status-tag.success {
+    background: rgba(41,217,122,0.12);
+    border: 1px solid rgba(41,217,122,0.3);
+    color: var(--green);
+  }
+  .parse-status-tag.warning {
+    background: rgba(247,79,79,0.12);
+    border: 1px solid rgba(247,79,79,0.3);
+    color: var(--red);
+  }
+
+  .parse-count {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 8px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+    text-align: right;
+  }
+
+  /* ── Import/Export ── */
+  .btn-green {
+    background: var(--green);
+    color: #0a1f12;
+  }
+  .btn-excel {
+    background: #217346;
+    color: #fff;
+  }
+  input[type="file"] { display: none; }
+
+  /* ── Unified Simulation section ── */
+  .sim-section {
+    background: var(--surface);
+    border: 1px solid rgba(139,92,246,0.4);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .sim-section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #a78bfa;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .sim-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+  }
+  .sim-select {
+    background: var(--bg);
+    border: 1px solid rgba(139,92,246,0.4);
+    border-radius: var(--radius);
+    color: #a78bfa;
+    font-size: 13px;
+    padding: 6px 10px;
+    outline: none;
+    cursor: pointer;
+  }
+  .sim-input {
+    background: var(--bg);
+    border: 1px solid rgba(139,92,246,0.4);
+    border-radius: var(--radius);
+    color: #a78bfa;
+    font-size: 13px;
+    padding: 6px 10px;
+    outline: none;
+    width: 110px;
+    transition: border-color 0.15s;
+  }
+  .sim-input:focus { border-color: #a78bfa; }
+  .sim-input::placeholder { color: rgba(167,139,250,0.35); }
+  .sim-sub { display: none; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .sim-chip {
+    background: rgba(139,92,246,0.12);
+    border: 1px solid rgba(139,92,246,0.3);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: #a78bfa;
+    font-weight: 600;
+    align-self: flex-end;
+    margin-bottom: 1px;
+  }
+
+  /* Active banner */
+  .sim-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(139,92,246,0.08);
+    border: 1px solid rgba(139,92,246,0.35);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #a78bfa;
+  }
+  .sim-banner strong { font-weight: 700; }
+  .sim-banner button {
+    margin-left: auto;
+    padding: 4px 12px;
+    font-size: 12px;
+    background: transparent;
+    border: 1px solid rgba(139,92,246,0.5);
+    color: #a78bfa;
+    border-radius: var(--radius);
+  }
+  .sim-banner button:hover { background: rgba(139,92,246,0.12); opacity:1; }
+  .pnl-orig { font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+
+  .import-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    background: transparent;
+  }
+  .import-label:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<h1>Trade Journal</h1>
+<p class="subtitle">Paste your trade history, filter by date, and review your P&amp;L.</p>
+
+<!-- Paste section -->
+<div class="paste-section">
+  <label>Raw Trade Data</label>
+  <textarea id="rawInput" placeholder="Sell0.01 XAUUSD @ 4029.07&#10;$1.38&#10;30/06/2026 07:21:33 | 4451015068&#10;&#10;Paste multiple entries — each trade is 3 lines."></textarea>
+  <div class="parse-status-tag" id="parseStatusTag"></div>
+  <div class="btn-row">
+    <button class="btn-primary" onclick="parseAndRender()">Parse Trades</button>
+    <button class="btn-ghost" onclick="clearAll()">Clear</button>
+    <label class="import-label" for="xlsxImport" title="Import a previously exported Trade Journal .xlsx file">
+      ⬆ Import Excel
+    </label>
+    <input type="file" id="xlsxImport" accept=".xlsx,.xls" onchange="importFromExcel(event)" />
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="controls" id="controls" style="display:none">
+  <div class="ctrl-group">
+    <label>From</label>
+    <div style="display:flex;gap:4px;align-items:center;">
+      <input type="date" id="dateFrom" onchange="applyFilters()" />
+      <div id="dateFromShiftBtns" style="display:flex;flex-direction:column;gap:2px;">
+        <button class="btn-ghost" onclick="shiftDate('dateFrom', 1)"
+                style="padding:1px 6px;font-size:11px;line-height:1.4;" title="Next day">▲</button>
+        <button class="btn-ghost" onclick="shiftDate('dateFrom', -1)"
+                style="padding:1px 6px;font-size:11px;line-height:1.4;" title="Previous day">▼</button>
+      </div>
+    </div>
+  </div>
+  <div class="ctrl-group">
+    <label>To</label>
+    <div style="display:flex;gap:4px;align-items:center;">
+      <input type="date" id="dateTo" onchange="applyFilters()" />
+      <div id="dateToShiftBtns" style="display:flex;flex-direction:column;gap:2px;">
+        <button class="btn-ghost" onclick="shiftDate('dateTo', 1)"
+                style="padding:1px 6px;font-size:11px;line-height:1.4;" title="Next day">▲</button>
+        <button class="btn-ghost" onclick="shiftDate('dateTo', -1)"
+                style="padding:1px 6px;font-size:11px;line-height:1.4;" title="Previous day">▼</button>
+      </div>
+    </div>
+    <div class="preset-row" id="presetRow">
+      <button class="btn-preset" onclick="setDatePreset('D')" title="Fix to a single day, with prev/next">D</button>
+      <button class="btn-preset" onclick="setDatePreset('W')" title="Fix to a week, with prev/next">W</button>
+      <button class="btn-preset" onclick="setDatePreset('M')" title="Fix to a month, with prev/next">M</button>
+      <button class="btn-preset" onclick="setDatePreset('Y')" title="Fix to a year, with prev/next">Y</button>
+    </div>
+    <div class="preset-row" id="periodNav" style="display:none;align-items:center;gap:6px;">
+      <button class="btn-preset" onclick="shiftDatePeriod(-1)" title="Previous">◀</button>
+      <span id="periodLabel" style="font-size:12px;color:var(--muted);white-space:nowrap;"></span>
+      <button class="btn-preset" onclick="shiftDatePeriod(1)" title="Next">▶</button>
+      <button class="btn-preset" onclick="exitDatePeriodMode()" title="Exit fixed range, allow manual date selection">✕</button>
+    </div>
+  </div>
+  <div class="ctrl-group">
+    <label>Symbol</label>
+    <select id="symbolFilter" onchange="applyFilters()">
+      <option value="">All symbols</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <label>Direction</label>
+    <select id="dirFilter" onchange="applyFilters()">
+      <option value="">All</option>
+      <option value="Sell">Sell</option>
+      <option value="Buy">Buy</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <label>Lot size</label>
+    <div style="display:flex;gap:4px;">
+      <select id="lotOp" onchange="applyFilters()" style="width:auto;padding:6px 8px;">
+        <option value="">Any</option>
+        <option value="eq">=</option>
+        <option value="lt">&lt;</option>
+        <option value="lte">&le;</option>
+        <option value="gt">&gt;</option>
+        <option value="gte">&ge;</option>
+      </select>
+      <input type="number" id="lotVal" min="0" step="0.01" placeholder="0.01"
+             oninput="applyFilters()"
+             style="width:72px;background:var(--bg);border:1px solid var(--border);
+                    border-radius:var(--radius);color:var(--text);font-size:13px;
+                    padding:6px 8px;outline:none;" />
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <div class="ctrl-group">
+    <label>&nbsp;</label>
+    <button class="btn-ghost" onclick="clearFilters()">Clear filters</button>
+  </div>
+  <div class="ctrl-group">
+    <label>&nbsp;</label>
+    <button class="btn-excel" onclick="exportToExcel()">⬇ Export Excel</button>
+  </div>
+</div>
+
+<!-- Unified Simulation section (shown when trades are loaded) -->
+<div class="sim-section" id="simSection">
+  <div class="sim-section-title">⚡ Simulation</div>
+  <div class="sim-row">
+    <div class="ctrl-group">
+      <label style="color:#a78bfa;">Mode</label>
+      <select class="sim-select" id="simMode" onchange="onSimModeChange()">
+        <option value="none">None</option>
+        <option value="fixed">Fixed Lot</option>
+        <option value="proportion">Trade Proportion</option>
+        <option value="balance">Proportion by Balance</option>
+      </select>
+    </div>
+
+    <!-- Fixed Lot sub-inputs -->
+    <div class="sim-sub" id="simFixedInputs">
+      <div class="ctrl-group">
+        <label style="color:#a78bfa;">Lot size</label>
+        <input type="number" class="sim-input" id="simFixedLot" min="0.01" step="0.01" placeholder="e.g. 0.02"
+               oninput="applyFilters()" />
+      </div>
+    </div>
+
+    <!-- Trade Proportion sub-inputs -->
+    <div class="sim-sub" id="simPropInputs">
+      <div class="ctrl-group">
+        <label style="color:#a78bfa;">Proportion</label>
+        <input type="number" class="sim-input" id="simProportion" min="0.0001" step="0.01" placeholder="e.g. 0.10"
+               oninput="onPropChange()" />
+      </div>
+      <div class="sim-chip" id="simPropChip" style="display:none"></div>
+    </div>
+
+    <!-- Balance Proportion sub-inputs -->
+    <div class="sim-sub" id="simBalanceInputs">
+      <div class="ctrl-group">
+        <label style="color:#a78bfa;">Master Balance ($)</label>
+        <input type="number" class="sim-input" id="simMasterBal" min="1" step="1" placeholder="e.g. 5000"
+               oninput="onBalanceChange()" />
+      </div>
+      <div class="ctrl-group">
+        <label style="color:#a78bfa;">Copier Balance ($)</label>
+        <input type="number" class="sim-input" id="simCopierBal" min="1" step="1" placeholder="e.g. 400"
+               oninput="onBalanceChange()" />
+      </div>
+      <div class="sim-chip" id="simBalChip" style="display:none"></div>
+    </div>
+
+    <!-- Minimum trade size handling, for computed-lot modes (proportion/balance) -->
+    <div class="sim-sub" id="simMinInputs">
+      <div class="ctrl-group">
+        <label style="color:#a78bfa;">Min lot size</label>
+        <input type="number" class="sim-input" id="simMinLot" min="0.0001" step="0.01" value="0.01"
+               oninput="applyFilters()" />
+      </div>
+      <div class="ctrl-group">
+        <label style="color:#a78bfa;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+          <input type="checkbox" id="simRoundUp" checked onchange="applyFilters()" />
+          Round up to minimum
+        </label>
+      </div>
+    </div>
+
+    <div style="flex:1"></div>
+    <div class="ctrl-group">
+      <label>&nbsp;</label>
+      <button class="btn-ghost" onclick="clearSimulation()" style="color:#a78bfa;border-color:rgba(139,92,246,0.4)">Reset simulation</button>
+    </div>
+  </div>
+</div>
+
+<!-- Simulation active banner -->
+<div class="sim-banner" id="simBanner" style="display:none">
+  <span id="simBannerText"></span>
+  <button onclick="clearSimulation()">✕ Clear</button>
+</div>
+
+<!-- Summary -->
+<div class="summary" id="summary" style="display:none">
+  <div class="card">
+    <div class="card-label">Total P&amp;L</div>
+    <div class="card-value" id="totalPnl">—</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Trades</div>
+    <div class="card-value neutral" id="totalTrades">—</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Wins</div>
+    <div class="card-value pos" id="totalWins">—</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Losses</div>
+    <div class="card-value neg" id="totalLosses">—</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Win Rate</div>
+    <div class="card-value neutral" id="winRate">—</div>
+  </div>
+</div>
+
+<!-- Data view tabs -->
+<div class="tabs" id="dataTabs" style="display:none">
+  <button class="tab-btn active" type="button" data-tab="trades" onclick="switchTab('trades')">Trades</button>
+  <button class="tab-btn" type="button" data-tab="symbols" onclick="switchTab('symbols')">By Symbol</button>
+  <button class="tab-btn" type="button" data-tab="groups" onclick="switchTab('groups')">Trade Groups</button>
+  <button class="tab-btn" type="button" data-tab="daily" onclick="switchTab('daily')">Daily</button>
+</div>
+
+<!-- Per-pair breakdown -->
+<div class="table-wrap tab-panel" id="avgSummary" style="display:none;">
+  <table id="pairTable">
+    <thead>
+      <tr>
+        <th>Pair</th>
+        <th>Trades</th>
+        <th>Wins</th>
+        <th>Losses</th>
+        <th>Win Rate</th>
+        <th>Avg Win</th>
+        <th>Avg Loss</th>
+        <th>Profit Factor</th>
+        <th>Largest Win</th>
+        <th>Largest Loss</th>
+        <th>Total P&amp;L</th>
+      </tr>
+    </thead>
+    <tbody id="pairTableBody"></tbody>
+  </table>
+</div>
+
+<!-- Table -->
+<div class="table-wrap tab-panel" id="tableWrap" style="display:none">
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortBy('datetime')" id="th-datetime">Date &amp; Time <span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('direction')" id="th-direction">Dir <span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('symbol')" id="th-symbol">Symbol <span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('volume')" id="th-volume">Volume <span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('price')" id="th-price">Entry Price <span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('pnl')" id="th-pnl">P&amp;L <span class="sort-icon">↕</span></th>
+        <th id="th-tradeid">Trade ID</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  <div class="parse-count" id="parseCount" style="display:flex;justify-content:space-between;align-items:center;">
+    <span id="parseCountText"></span>
+    <span id="currencyBadge" style="display:none;background:rgba(79,142,247,0.12);border:1px solid rgba(79,142,247,0.3);
+      border-radius:20px;padding:2px 10px;font-size:11px;color:var(--accent);font-weight:600;"></span>
+  </div>
+</div>
+
+<!-- Closed trade groups: trades closed within 10 seconds of each other -->
+<div class="table-wrap tab-panel" id="groupsWrap" style="display:none">
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortGroupsBy('start')" id="gth-start">Start <span class="sort-icon">↕</span></th>
+        <th onclick="sortGroupsBy('end')" id="gth-end">End <span class="sort-icon">↕</span></th>
+        <th onclick="sortGroupsBy('count')" id="gth-count">Trades <span class="sort-icon">↕</span></th>
+        <th onclick="sortGroupsBy('gains')" id="gth-gains">Total Gains <span class="sort-icon">↕</span></th>
+        <th onclick="sortGroupsBy('losses')" id="gth-losses">Total Loss <span class="sort-icon">↕</span></th>
+        <th onclick="sortGroupsBy('net')" id="gth-net">Net P&amp;L <span class="sort-icon">↕</span></th>
+        <th onclick="sortGroupsBy('maxDrawdown')" id="gth-maxDrawdown" title="Gains + losses, treated as absolute magnitudes — the total swing if the group had gone the other way">Max Drawdown <span class="sort-icon">↕</span></th>
+      </tr>
+    </thead>
+    <tbody id="groupsTableBody"></tbody>
+  </table>
+  <div class="parse-count" id="groupsCount" style="display:flex;justify-content:space-between;align-items:center;">
+    <span id="groupsCountText"></span>
+    <span style="color:var(--muted);">Trades closed within 10s of the previous one are grouped together</span>
+  </div>
+</div>
+
+<!-- Daily statistics: profit/loss, drawdown, and win/loss ratios grouped by calendar day -->
+<div class="tab-panel" id="dailyWrap" style="display:none">
+  <div class="summary" id="dailySummary" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-label">Trading Days</div>
+      <div class="card-value neutral" id="dailyTotalDays">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Profitable Days</div>
+      <div class="card-value pos" id="dailyProfitDays">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Losing Days</div>
+      <div class="card-value neg" id="dailyLossDays">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Day Win Rate</div>
+      <div class="card-value neutral" id="dailyWinRate">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Best Day</div>
+      <div class="card-value pos" id="dailyBestDay">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Worst Day</div>
+      <div class="card-value neg" id="dailyWorstDay">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Avg Daily P&amp;L</div>
+      <div class="card-value neutral" id="dailyAvgPnl">—</div>
+    </div>
+    <div class="card">
+      <div class="card-label" title="Largest peak-to-trough decline in cumulative P&L across the whole filtered period, in chronological order">Max Drawdown</div>
+      <div class="card-value neg" id="dailyMaxDD">—</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortDailyBy('date')" id="dth-date">Date <span class="sort-icon">↕</span></th>
+          <th onclick="sortDailyBy('count')" id="dth-count">Trades <span class="sort-icon">↕</span></th>
+          <th onclick="sortDailyBy('wins')" id="dth-wins">Wins <span class="sort-icon">↕</span></th>
+          <th onclick="sortDailyBy('losses')" id="dth-losses">Losses <span class="sort-icon">↕</span></th>
+          <th onclick="sortDailyBy('winRate')" id="dth-winRate">Win Rate <span class="sort-icon">↕</span></th>
+          <th onclick="sortDailyBy('grossWin')" id="dth-grossWin">Gross Gain <span class="sort-icon">↕</span></th>
+          <th onclick="sortDailyBy('grossLoss')" id="dth-grossLoss">Gross Loss <span class="sort-icon">↕</span></th>
+          <th onclick="sortDailyBy('net')" id="dth-net">Net P&amp;L <span class="sort-icon">↕</span></th>
+          <th onclick="sortDailyBy('profitFactor')" id="dth-profitFactor">Profit Factor <span class="sort-icon">↕</span></th>
+          <th onclick="sortDailyBy('maxDrawdown')" id="dth-maxDrawdown" title="Largest peak-to-trough decline in cumulative P&L within that day, in chronological order">Max Drawdown <span class="sort-icon">↕</span></th>
+        </tr>
+      </thead>
+      <tbody id="dailyTableBody"></tbody>
+    </table>
+    <div class="parse-count" id="dailyCount" style="display:flex;justify-content:space-between;align-items:center;">
+      <span id="dailyCountText"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Empty state (shown when no trades loaded yet) -->
+<div class="empty-state" id="emptyState">
+  <div class="empty-icon">📋</div>
+  <p>Paste your trade history above and click <strong>Parse Trades</strong>.<br/>Each trade should be 3 lines: action line, P&amp;L line, and datetime/ID line.</p>
+</div>
+
+<!-- Parse/import warnings — full detail lives here at the bottom; the tag under the input box is just a heads-up -->
+<div class="error-banner" id="errorBanner"></div>
+
+<script>
+  let allTrades = [];      // parsed trades — only ever replaced by parseAndRender/importFromExcel
+  let filteredTrades = []; // current filter+sort (+sim) view over allTrades — only ever replaced by applyFilters
+  let sortKey = 'datetime';
+  let sortDir = -1; // -1 = desc, 1 = asc
+  let currentCurrency = '$';
+  let groupSortKey = 'start';
+  let groupSortDir = -1; // -1 = desc, 1 = asc
+  let dailySortKey = 'date';
+  let dailySortDir = -1; // -1 = desc, 1 = asc
+  let activeTab = 'trades'; // 'trades' | 'symbols' | 'groups' | 'daily'
+
+  const GROUP_GAP_MS = 10 * 1000; // trades closed within this many ms of the previous one join the same group
+
+  // Map symbol → friendly name for display
+  const CURRENCY_NAMES = {
+    '$': 'USD', '€': 'EUR', '£': 'GBP', '¥': 'JPY / CNY',
+    '₹': 'INR', '₩': 'KRW', '₽': 'RUB', 'R': 'ZAR',
+    'kr': 'SEK / NOK / DKK', 'Fr': 'CHF', 'CHF': 'CHF',
+  };
+  function currencyLabel(sym) {
+    return CURRENCY_NAMES[sym] ? `${sym} (${CURRENCY_NAMES[sym]})` : sym;
+  }
+
+  // ── Unified Simulation ─────────────────────────────────────────
+  function getSimMode() {
+    return document.getElementById('simMode').value;
+  }
+
+  function getSimMinLot() {
+    const v = parseFloat(document.getElementById('simMinLot').value);
+    return (!isNaN(v) && v > 0) ? v : 0.01;
+  }
+
+  function getSimRoundUp() {
+    return document.getElementById('simRoundUp').checked;
+  }
+
+  // Applies the configured minimum-lot-size handling to a raw computed lot.
+  // Returns {copyLot} when the trade should be kept (rounded up if needed),
+  // or {filtered: true} when it falls below the minimum and round-up is off.
+  function applyMinLot(rawLot) {
+    const minLot = getSimMinLot();
+    if (rawLot >= minLot) return { copyLot: rawLot };
+    if (getSimRoundUp()) return { copyLot: minLot };
+    return { filtered: true };
+  }
+
+  // Returns {displayPnl, copyLot, note} for a kept trade, {filtered: true} for a
+  // trade excluded by the minimum-lot-size setting, or null if no sim active /
+  // inputs incomplete.
+  function getSimResult(t) {
+    const mode = getSimMode();
+    if (mode === 'none') return null;
+
+    if (mode === 'fixed') {
+      const lot = parseFloat(document.getElementById('simFixedLot').value);
+      if (isNaN(lot) || lot <= 0 || t.volume === 0) return null;
+      return {
+        displayPnl: t.pnl * (lot / t.volume),
+        copyLot: lot,
+        note: `fixed @ ${lot.toFixed(2)} lots`
+      };
+    }
+
+    if (mode === 'proportion') {
+      const prop = parseFloat(document.getElementById('simProportion').value);
+      if (isNaN(prop) || prop <= 0 || t.volume === 0) return null;
+      const rawLot = Math.floor(t.volume * prop / 0.01) * 0.01;
+      const min = applyMinLot(rawLot);
+      if (min.filtered) return { filtered: true };
+      const copyLot = min.copyLot;
+      return {
+        displayPnl: t.pnl * (copyLot / t.volume),
+        copyLot,
+        note: `prop ${prop.toFixed(4)}× → ${copyLot.toFixed(2)} lots`
+      };
+    }
+
+    if (mode === 'balance') {
+      const master = parseFloat(document.getElementById('simMasterBal').value);
+      const copier = parseFloat(document.getElementById('simCopierBal').value);
+      if (isNaN(master) || isNaN(copier) || master <= 0 || copier <= 0 || t.volume === 0) return null;
+      const ratio   = copier / master;
+      const rawLot  = Math.floor(t.volume * ratio / 0.01) * 0.01;
+      const min     = applyMinLot(rawLot);
+      if (min.filtered) return { filtered: true };
+      const copyLot = min.copyLot;
+      return {
+        displayPnl: t.pnl * (copyLot / t.volume),
+        copyLot,
+        ratio,
+        note: `ratio ${ratio.toFixed(4)}× → ${copyLot.toFixed(2)} lots`
+      };
+    }
+
+    return null;
+  }
+
+  // Simulation-aware P&L for a trade — the single source of truth used by
+  // rendering, statistics, and export so they can never disagree.
+  function getPnl(t) {
+    const sim = getSimResult(t);
+    return (sim && !sim.filtered) ? sim.displayPnl : t.pnl;
+  }
+
+  function getSimBannerText() {
+    const mode = getSimMode();
+    if (mode === 'fixed') {
+      const lot = parseFloat(document.getElementById('simFixedLot').value);
+      if (isNaN(lot) || lot <= 0) return null;
+      return `⚡ Fixed lot — all trades simulated at <strong>${lot.toFixed(2)}</strong> lots. Originals shown in grey.`;
+    }
+    if (mode === 'proportion') {
+      const prop = parseFloat(document.getElementById('simProportion').value);
+      if (isNaN(prop) || prop <= 0) return null;
+      return `📊 Trade proportion — <strong>${prop.toFixed(4)}×</strong> of master lot per trade (${getMinLotBannerNote()}). Originals shown in grey.`;
+    }
+    if (mode === 'balance') {
+      const master = parseFloat(document.getElementById('simMasterBal').value);
+      const copier = parseFloat(document.getElementById('simCopierBal').value);
+      if (isNaN(master) || isNaN(copier) || master <= 0 || copier <= 0) return null;
+      const ratio = copier / master;
+      return `👥 Balance proportion — Master <strong>$${master.toLocaleString()}</strong> / Copier <strong>$${copier.toLocaleString()}</strong> · ratio <strong>${ratio.toFixed(4)}×</strong> (${getMinLotBannerNote()}). Originals shown in grey.`;
+    }
+    return null;
+  }
+
+  // Short clause describing current minimum-lot-size handling, for banner text.
+  function getMinLotBannerNote() {
+    const min = getSimMinLot().toFixed(2);
+    return getSimRoundUp() ? `min ${min}, rounded up` : `min ${min}, smaller trades filtered out`;
+  }
+
+  function onSimModeChange() {
+    const mode = getSimMode();
+    document.getElementById('simFixedInputs').style.display   = mode === 'fixed'      ? 'flex' : 'none';
+    document.getElementById('simPropInputs').style.display    = mode === 'proportion' ? 'flex' : 'none';
+    document.getElementById('simBalanceInputs').style.display = mode === 'balance'    ? 'flex' : 'none';
+    document.getElementById('simMinInputs').style.display     = (mode === 'proportion' || mode === 'balance') ? 'flex' : 'none';
+    applyFilters();
+  }
+
+  function onPropChange() {
+    const prop = parseFloat(document.getElementById('simProportion').value);
+    const chip = document.getElementById('simPropChip');
+    if (!isNaN(prop) && prop > 0) {
+      chip.textContent = `${prop.toFixed(4)}× of master lot`;
+      chip.style.display = 'block';
+    } else {
+      chip.style.display = 'none';
+    }
+    applyFilters();
+  }
+
+  function onBalanceChange() {
+    const master = parseFloat(document.getElementById('simMasterBal').value);
+    const copier = parseFloat(document.getElementById('simCopierBal').value);
+    const chip   = document.getElementById('simBalChip');
+    if (!isNaN(master) && !isNaN(copier) && master > 0 && copier > 0) {
+      const ratio = copier / master;
+      chip.textContent = `Ratio ${ratio.toFixed(4)}×`;
+      chip.style.display = 'block';
+    } else {
+      chip.style.display = 'none';
+    }
+    applyFilters();
+  }
+
+  function clearSimulation() {
+    document.getElementById('simMode').value       = 'none';
+    document.getElementById('simFixedLot').value   = '';
+    document.getElementById('simProportion').value = '';
+    document.getElementById('simMasterBal').value  = '';
+    document.getElementById('simCopierBal').value  = '';
+    document.getElementById('simMinLot').value     = '0.01';
+    document.getElementById('simRoundUp').checked  = true;
+    document.getElementById('simPropChip').style.display = 'none';
+    document.getElementById('simBalChip').style.display  = 'none';
+    onSimModeChange();
+  }
+
+  // Trade IDs are meant to be unique — drop repeats (keeping the first occurrence)
+  // so the same trade pasted/imported twice doesn't double-count in the totals.
+  function dedupeByTradeId(trades) {
+    const seen = new Set();
+    const unique = [];
+    let duplicates = 0;
+    for (const t of trades) {
+      if (seen.has(t.tradeId)) { duplicates++; continue; }
+      seen.add(t.tradeId);
+      unique.push(t);
+    }
+    return { trades: unique, duplicates };
+  }
+
+  // ── Parse ──────────────────────────────────────────────────────
+  function parseTrades(raw) {
+    const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const trades = [];
+    const errors = [];
+
+    // Line 1: Sell0.01 XAUUSD @ 4029.07  OR  Buy0.01 XAUUSD @ 4029.07
+    const RE_START    = /^(Buy|Sell)([\d.]+)\s+(\S+)\s+@\s+([\d.]+)$/i;
+    // Line 2: any currency — e.g. $1.38, -€2.50, £-0.75, ¥120, R5.00
+    // Groups: [1]=leading minus, [2]=currency symbol, [3]=number (may start with minus)
+    const RE_PNL      = /^(-?)([^\d\s.,\-]+)(-?[\d.,]+)$/;
+    // Line 3: 30/06/2026 07:21:33 | 4451015068
+    const RE_DATETIME = /^(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s*\|\s*(\d+)$/;
+
+    // Don't assume line 1 of the pasted text is the start of the first entry —
+    // scan forward for a line that looks like an entry start, skipping anything
+    // (headers, blank separators, stray notes) in between, then parse from there.
+    let i = 0;
+    while (i < lines.length) {
+      const m1 = lines[i].match(RE_START);
+      if (!m1) { i++; continue; }
+
+      if (i + 2 >= lines.length) {
+        errors.push(`Line ${i+1}: trade "${lines[i]}" started but the text ends before its P&L/date lines.`);
+        break;
+      }
+
+      const m2 = lines[i + 1].match(RE_PNL);
+      const m3 = lines[i + 2].match(RE_DATETIME);
+
+      if (!m2 || !m3) {
+        errors.push(`Lines ${i+1}–${i+3}: found a trade start but could not parse the lines that follow it.`);
+        i++; // resume scanning right after the failed start, not a fixed 3-line block
+        continue;
+      }
+
+      const direction  = m1[1];
+      const volume     = parseFloat(m1[2]);
+      const symbol     = m1[3];
+      const price      = parseFloat(m1[4]);
+      const currency   = m2[2];
+      const pnlRaw     = parseFloat(m2[3].replace(',', '.'));
+      const isNegative = m2[1] === '-' || m2[3].startsWith('-');
+      const pnl        = isNegative ? -Math.abs(pnlRaw) : Math.abs(pnlRaw);
+      const dateStr    = m3[1];
+      const timeStr    = m3[2];
+      const tradeId    = m3[3];
+
+      const [dd, mm, yyyy] = dateStr.split('/');
+      const dt = new Date(`${yyyy}-${mm}-${dd}T${timeStr}`);
+
+      trades.push({ direction, volume, symbol, price, pnl, currency, dateStr, timeStr, tradeId, dt });
+      i += 3;
+    }
+
+    // Drop duplicate trade IDs (e.g. the same block pasted twice)
+    const deduped = dedupeByTradeId(trades);
+    if (deduped.duplicates > 0) {
+      errors.push(`Removed ${deduped.duplicates} duplicate trade${deduped.duplicates !== 1 ? 's' : ''} (matching Trade ID).`);
+    }
+
+    // Currency consistency check
+    const currencies = [...new Set(deduped.trades.map(t => t.currency))];
+    if (currencies.length > 1) {
+      errors.push(
+        `CURRENCY MISMATCH — found ${currencies.length} different currencies: ${currencies.map(currencyLabel).join(', ')}. ` +
+        `All trades must use the same currency. Please check your data.`
+      );
+    }
+
+    return { trades: deduped.trades, errors, currencies };
+  }
+
+  // Heads-up tag directly under the input box — full detail always lives in the
+  // error banner at the bottom of the page, this is just a quick success/warning glance.
+  function setParseStatus(type, text) {
+    const tag = document.getElementById('parseStatusTag');
+    tag.textContent = text || '';
+    tag.className = 'parse-status-tag' + (type ? ' ' + type : '');
+    tag.style.display = text ? 'inline-block' : 'none';
+  }
+
+  function parseAndRender() {
+    const raw = document.getElementById('rawInput').value;
+    if (!raw.trim()) return;
+
+    const { trades, errors, currencies } = parseTrades(raw);
+    allTrades = trades;
+
+    const banner = document.getElementById('errorBanner');
+    if (errors.length) {
+      banner.innerHTML = errors.map(e =>
+        e.startsWith('CURRENCY') ? `<strong>⚠ ${e}</strong>` : e
+      ).join('<br>');
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+
+    // Block display on currency mismatch
+    if (currencies && currencies.length > 1) {
+      setParseStatus('warning', '⚠ Currency mismatch — see warnings below');
+      showEmpty('Currency mismatch — correct the data above and re-parse.');
+      return;
+    }
+
+    if (trades.length === 0) {
+      setParseStatus('warning', '⚠ No valid trades found — see warnings below');
+      showEmpty('No valid trades found. Check the format.');
+      return;
+    }
+
+    setParseStatus(
+      errors.length ? 'warning' : 'success',
+      errors.length
+        ? `⚠ ${trades.length} trade${trades.length !== 1 ? 's' : ''} parsed, ${errors.length} warning${errors.length !== 1 ? 's' : ''} — see below`
+        : `✓ ${trades.length} trade${trades.length !== 1 ? 's' : ''} parsed successfully`
+    );
+
+    // Set detected currency globally
+    currentCurrency = (currencies && currencies[0]) || '$';
+
+    // Populate symbol filter
+    const symbols = [...new Set(trades.map(t => t.symbol))].sort();
+    const symSel = document.getElementById('symbolFilter');
+    symSel.innerHTML = '<option value="">All symbols</option>' +
+      symbols.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    // Set default date range to full extent
+    exitDatePeriodMode();
+    const sorted = [...trades].sort((a,b) => a.dt - b.dt);
+    document.getElementById('dateFrom').value = toInputDate(sorted[0].dt);
+    document.getElementById('dateTo').value   = toInputDate(sorted[sorted.length-1].dt);
+
+    showUI();
+    applyFilters();
+  }
+
+  // ── Filter + render ────────────────────────────────────────────
+  function applyFilters() {
+    const fromVal = document.getElementById('dateFrom').value;
+    const toVal   = document.getElementById('dateTo').value;
+    const sym     = document.getElementById('symbolFilter').value;
+    const dir     = document.getElementById('dirFilter').value;
+    const lotOp   = document.getElementById('lotOp').value;
+    const lotVal  = parseFloat(document.getElementById('lotVal').value);
+
+    const from = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+    const to   = toVal   ? new Date(toVal   + 'T23:59:59') : null;
+
+    // Recompute the filtered (+ sorted) view from scratch every time — this is the
+    // one place `filteredTrades` is written. It may legitimately end up empty
+    // (e.g. filters exclude everything); renderTable/renderSummary both handle that.
+    filteredTrades = allTrades.filter(t => {
+      if (from && t.dt < from) return false;
+      if (to   && t.dt > to)   return false;
+      if (sym  && t.symbol !== sym) return false;
+      if (dir  && t.direction !== dir) return false;
+      if (lotOp && !isNaN(lotVal)) {
+        if (lotOp === 'eq'  && !(Math.abs(t.volume - lotVal) < 1e-9)) return false;
+        if (lotOp === 'lt'  && !(t.volume <  lotVal)) return false;
+        if (lotOp === 'lte' && !(t.volume <= lotVal)) return false;
+        if (lotOp === 'gt'  && !(t.volume >  lotVal)) return false;
+        if (lotOp === 'gte' && !(t.volume >= lotVal)) return false;
+      }
+      // A simulated lot below the configured minimum, with round-up disabled,
+      // drops the trade from the whole view (table, summary, groups, export).
+      const sim = getSimResult(t);
+      if (sim && sim.filtered) return false;
+      return true;
+    });
+
+    filteredTrades.sort((a, b) => {
+      let av = a[sortKey], bv = b[sortKey];
+      if (sortKey === 'datetime') { av = a.dt; bv = b.dt; }
+      if (typeof av === 'string') return sortDir * av.localeCompare(bv);
+      return sortDir * (av - bv);
+    });
+
+    // Simulation banner
+    const bannerText = getSimBannerText();
+    const simBanner  = document.getElementById('simBanner');
+    if (bannerText) {
+      document.getElementById('simBannerText').innerHTML = bannerText;
+      simBanner.style.display = 'flex';
+    } else {
+      simBanner.style.display = 'none';
+    }
+
+    // Update P&L column header
+    const mode = getSimMode();
+    const pnlTh = document.getElementById('th-pnl');
+    const modeLabel = { fixed: 'P&L (fixed) ', proportion: 'P&L (prop) ', balance: 'P&L (copy) ' };
+    pnlTh.childNodes[0].textContent = (mode !== 'none' && bannerText) ? (modeLabel[mode] || 'P&L ') : 'P&L ';
+
+    // Statistics always get recalculated from the freshly-rebuilt view, never cached.
+    renderTable(filteredTrades);
+    renderSummary(filteredTrades);
+    renderGroups(filteredTrades);
+    renderDaily(filteredTrades);
+  }
+
+  function renderTable(trades) {
+    const tbody = document.getElementById('tableBody');
+
+    if (trades.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No trades match the current filters.</td></tr>`;
+    } else {
+      tbody.innerHTML = trades.map(t => {
+        const sim      = getSimResult(t);
+        const displayPnl = getPnl(t);
+        const origNote   = sim
+          ? `<div class="pnl-orig" style="color:rgba(167,139,250,0.65);">${sim.note} · actual: ${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)} @ ${t.volume.toFixed(2)}</div>`
+          : '';
+        const pnlClass   = displayPnl >= 0 ? 'pos' : 'neg';
+        const pnlSign    = displayPnl >= 0 ? '+' : '';
+        const badgeClass = t.direction.toLowerCase() === 'sell' ? 'badge-sell' : 'badge-buy';
+        const cur        = currentCurrency;
+
+        return `
+          <tr>
+            <td>${t.dateStr} ${t.timeStr}</td>
+            <td><span class="badge ${badgeClass}">${t.direction}</span></td>
+            <td><strong>${t.symbol}</strong></td>
+            <td>${t.volume.toFixed(2)}</td>
+            <td>${t.price.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+            <td class="${pnlClass}" style="font-weight:600">${pnlSign}${cur}${Math.abs(displayPnl).toFixed(2)}${origNote}</td>
+            <td class="trade-id">${t.tradeId}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    // Count/badge always update, independent of whether the table itself is empty.
+    const countEl = document.getElementById('parseCountText');
+    const badgeEl = document.getElementById('currencyBadge');
+    countEl.textContent = `Showing ${trades.length} of ${allTrades.length} trade${allTrades.length !== 1 ? 's' : ''}`;
+    badgeEl.textContent = currencyLabel(currentCurrency);
+    badgeEl.style.display = 'inline-block';
+  }
+
+  function renderSummary(trades) {
+    const total  = trades.reduce((s, t) => s + getPnl(t), 0);
+    const wins   = trades.filter(t => getPnl(t) > 0).length;
+    const losses = trades.filter(t => getPnl(t) < 0).length;
+    const wr     = trades.length ? ((wins / trades.length) * 100).toFixed(1) : 0;
+
+    const pnlEl = document.getElementById('totalPnl');
+    const sign  = total >= 0 ? '+' : '';
+    pnlEl.textContent = `${sign}${currentCurrency}${Math.abs(total).toFixed(2)}`;
+    pnlEl.className = `card-value ${total >= 0 ? 'pos' : 'neg'}`;
+
+    const mode = getSimMode();
+    const modeLabel = { fixed: 'Total P&L (fixed)', proportion: 'Total P&L (prop)', balance: 'Total P&L (copy)' };
+    const hasBanner = !!getSimBannerText();
+    document.querySelector('#summary .card:first-child .card-label').textContent =
+      (mode !== 'none' && hasBanner) ? (modeLabel[mode] || 'Total P&L') : 'Total P&L';
+
+    document.getElementById('totalTrades').textContent = trades.length;
+    document.getElementById('totalWins').textContent   = wins;
+    document.getElementById('totalLosses').textContent = losses;
+    document.getElementById('winRate').textContent     = `${wr}%`;
+
+    // ── Per-pair breakdown table ──
+    const cur = currentCurrency;
+    const pairs = [...new Set(trades.map(t => t.symbol))].sort();
+
+    const pairStats = pairs.map(pair => {
+      const pt      = trades.filter(t => t.symbol === pair);
+      const pnls    = pt.map(getPnl);
+      const winPnls = pnls.filter(p => p > 0);
+      const lossPnls= pnls.filter(p => p < 0);
+      const totalPnl= pnls.reduce((s,v) => s+v, 0);
+      const grossW  = winPnls.reduce((s,v) => s+v, 0);
+      const grossL  = Math.abs(lossPnls.reduce((s,v) => s+v, 0));
+      return {
+        pair,
+        count:    pt.length,
+        wins:     winPnls.length,
+        losses:   lossPnls.length,
+        winRate:  pt.length ? ((winPnls.length / pt.length) * 100).toFixed(1) : '0.0',
+        avgWin:   winPnls.length  ? grossW / winPnls.length   : null,
+        avgLoss:  lossPnls.length ? grossL / lossPnls.length  : null,
+        pf:       grossL > 0 ? (grossW / grossL).toFixed(2) : winPnls.length ? '∞' : '—',
+        maxWin:   winPnls.length  ? Math.max(...winPnls)      : null,
+        maxLoss:  lossPnls.length ? Math.max(...lossPnls.map(Math.abs)) : null,
+        totalPnl,
+      };
+    });
+
+    // Totals footer row
+    const allPnls    = trades.map(getPnl);
+    const allWinPnls = allPnls.filter(p => p > 0);
+    const allLossPnls= allPnls.filter(p => p < 0);
+    const allGrossW  = allWinPnls.reduce((s,v) => s+v, 0);
+    const allGrossL  = Math.abs(allLossPnls.reduce((s,v) => s+v, 0));
+
+    const fmt   = (v, pos) => v != null ? `${pos ? '+' : '-'}${cur}${Math.abs(v).toFixed(2)}` : '—';
+    const fmtPnl= v => v >= 0 ? `<span class="pos">+${cur}${v.toFixed(2)}</span>` : `<span class="neg">-${cur}${Math.abs(v).toFixed(2)}</span>`;
+
+    const tbody = document.getElementById('pairTableBody');
+    tbody.innerHTML = pairStats.map(s => `
+      <tr>
+        <td><strong>${s.pair}</strong></td>
+        <td>${s.count}</td>
+        <td class="pos">${s.wins}</td>
+        <td class="neg">${s.losses}</td>
+        <td>${s.winRate}%</td>
+        <td class="pos">${s.avgWin  != null ? `+${cur}${s.avgWin.toFixed(2)}`  : '—'}</td>
+        <td class="neg">${s.avgLoss != null ? `-${cur}${s.avgLoss.toFixed(2)}` : '—'}</td>
+        <td class="${parseFloat(s.pf) >= 1 ? 'pos' : 'neg'}">${s.pf}</td>
+        <td class="pos">${s.maxWin  != null ? `+${cur}${s.maxWin.toFixed(2)}`  : '—'}</td>
+        <td class="neg">${s.maxLoss != null ? `-${cur}${s.maxLoss.toFixed(2)}` : '—'}</td>
+        <td>${fmtPnl(s.totalPnl)}</td>
+      </tr>`).join('') +
+      // Totals row
+      `<tr style="border-top:2px solid var(--border);font-weight:700;background:var(--surface2);">
+        <td>All Pairs</td>
+        <td>${trades.length}</td>
+        <td class="pos">${allWinPnls.length}</td>
+        <td class="neg">${allLossPnls.length}</td>
+        <td>${trades.length ? ((allWinPnls.length / trades.length)*100).toFixed(1) : '0.0'}%</td>
+        <td class="pos">${allWinPnls.length ? `+${cur}${(allGrossW/allWinPnls.length).toFixed(2)}` : '—'}</td>
+        <td class="neg">${allLossPnls.length ? `-${cur}${(allGrossL/allLossPnls.length).toFixed(2)}` : '—'}</td>
+        <td class="${allGrossL > 0 && (allGrossW/allGrossL) >= 1 ? 'pos' : 'neg'}">${allGrossL > 0 ? (allGrossW/allGrossL).toFixed(2) : allWinPnls.length ? '∞' : '—'}</td>
+        <td class="pos">${allWinPnls.length ? `+${cur}${Math.max(...allWinPnls).toFixed(2)}` : '—'}</td>
+        <td class="neg">${allLossPnls.length ? `-${cur}${Math.max(...allLossPnls.map(Math.abs)).toFixed(2)}` : '—'}</td>
+        <td>${fmtPnl(allPnls.reduce((s,v)=>s+v,0))}</td>
+      </tr>`;
+  }
+
+  // ── Closed trade groups ────────────────────────────────────────
+  // Trades are grouped when each one closes within GROUP_GAP_MS of the trade
+  // before it (chained, not all-pairs) — a burst of near-simultaneous closes.
+  // Only groups of 2+ trades are shown; a lone trade isn't a "group".
+  function computeTradeGroups(trades) {
+    const sorted = [...trades].sort((a, b) => a.dt - b.dt);
+    const groups = [];
+
+    for (const t of sorted) {
+      const last = groups.length ? groups[groups.length - 1] : null;
+      if (last && (t.dt - last.trades[last.trades.length - 1].dt) <= GROUP_GAP_MS) {
+        last.trades.push(t);
+      } else {
+        groups.push({ trades: [t] });
+      }
+    }
+
+    return groups
+      .filter(g => g.trades.length > 1)
+      .map(g => {
+        const gTrades = g.trades;
+        const first = gTrades[0];
+        const last  = gTrades[gTrades.length - 1];
+        const pnls  = gTrades.map(getPnl);
+        const gains = pnls.filter(p => p > 0).reduce((s, v) => s + v, 0);
+        const losses = Math.abs(pnls.filter(p => p < 0).reduce((s, v) => s + v, 0));
+        return {
+          trades:    gTrades,
+          start:     first.dt,
+          end:       last.dt,
+          startLabel: `${first.dateStr} ${first.timeStr}`,
+          endLabel:   `${last.dateStr} ${last.timeStr}`,
+          count:     gTrades.length,
+          gains,
+          losses,
+          net:       gains - losses,
+          maxDrawdown: gains + losses,
+        };
+      });
+  }
+
+  function renderGroups(trades) {
+    const groups = computeTradeGroups(trades);
+
+    groups.sort((a, b) => {
+      let av = a[groupSortKey], bv = b[groupSortKey];
+      if (groupSortKey === 'start' || groupSortKey === 'end') { av = av.getTime(); bv = bv.getTime(); }
+      return groupSortDir * (av - bv);
+    });
+
+    const cur = currentCurrency;
+    const tbody = document.getElementById('groupsTableBody');
+
+    if (groups.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted);">No trade groups found — no trades were closed within 10 seconds of another.</td></tr>`;
+    } else {
+      tbody.innerHTML = groups.map(g => {
+        const netClass = g.net >= 0 ? 'pos' : 'neg';
+        const netSign  = g.net >= 0 ? '+' : '';
+        return `
+          <tr>
+            <td>${g.startLabel}</td>
+            <td>${g.endLabel}</td>
+            <td>${g.count}</td>
+            <td class="pos">${g.gains > 0 ? `+${cur}${g.gains.toFixed(2)}` : `${cur}0.00`}</td>
+            <td class="neg">${g.losses > 0 ? `-${cur}${g.losses.toFixed(2)}` : `${cur}0.00`}</td>
+            <td class="${netClass}" style="font-weight:600">${netSign}${cur}${Math.abs(g.net).toFixed(2)}</td>
+            <td>${cur}${g.maxDrawdown.toFixed(2)}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    const groupedTrades = groups.reduce((s, g) => s + g.count, 0);
+    document.getElementById('groupsCountText').textContent =
+      `${groups.length} group${groups.length !== 1 ? 's' : ''} · ${groupedTrades} of ${trades.length} shown trade${trades.length !== 1 ? 's' : ''} grouped`;
+  }
+
+  function sortGroupsBy(key) {
+    if (groupSortKey === key) groupSortDir *= -1;
+    else { groupSortKey = key; groupSortDir = -1; }
+
+    document.querySelectorAll('th[id^="gth-"]').forEach(th => th.classList.remove('sorted'));
+    const thEl = document.getElementById(`gth-${key}`);
+    if (thEl) {
+      thEl.classList.add('sorted');
+      const icon = thEl.querySelector('.sort-icon');
+      if (icon) icon.textContent = groupSortDir === -1 ? '↓' : '↑';
+    }
+
+    renderGroups(filteredTrades);
+  }
+
+  // ── Daily statistics ──────────────────────────────────────────
+  // One entry per calendar day (by dateStr) a trade closed on. maxDrawdown
+  // per day is the largest peak-to-trough decline in that day's own running
+  // cumulative P&L (chronological), i.e. a same-day equity-curve drawdown.
+  function computeDailyStats(trades) {
+    const sorted = [...trades].sort((a, b) => a.dt - b.dt);
+    const byDay = new Map();
+    for (const t of sorted) {
+      if (!byDay.has(t.dateStr)) byDay.set(t.dateStr, []);
+      byDay.get(t.dateStr).push(t);
+    }
+
+    return [...byDay.entries()].map(([dateStr, dayTrades]) => {
+      const pnls      = dayTrades.map(getPnl);
+      const wins      = pnls.filter(p => p > 0);
+      const losses    = pnls.filter(p => p < 0);
+      const grossWin  = wins.reduce((s, v) => s + v, 0);
+      const grossLoss = Math.abs(losses.reduce((s, v) => s + v, 0));
+
+      let cum = 0, peak = 0, maxDrawdown = 0;
+      for (const p of pnls) {
+        cum += p;
+        if (cum > peak) peak = cum;
+        const dd = peak - cum;
+        if (dd > maxDrawdown) maxDrawdown = dd;
+      }
+
+      return {
+        date:        dayTrades[0].dt,
+        dateStr,
+        count:       dayTrades.length,
+        wins:        wins.length,
+        losses:      losses.length,
+        winRate:     dayTrades.length ? (wins.length / dayTrades.length) * 100 : 0,
+        grossWin,
+        grossLoss,
+        net:         grossWin - grossLoss,
+        profitFactor: grossLoss > 0 ? grossWin / grossLoss : (wins.length ? Infinity : 0),
+        maxDrawdown,
+      };
+    });
+  }
+
+  // Peak-to-trough decline in cumulative P&L across the whole chronological
+  // trade sequence (not reset per day) — the account-level max drawdown.
+  function computeOverallMaxDrawdown(trades) {
+    const sorted = [...trades].sort((a, b) => a.dt - b.dt);
+    let cum = 0, peak = 0, maxDrawdown = 0;
+    for (const t of sorted) {
+      cum += getPnl(t);
+      if (cum > peak) peak = cum;
+      const dd = peak - cum;
+      if (dd > maxDrawdown) maxDrawdown = dd;
+    }
+    return maxDrawdown;
+  }
+
+  function renderDaily(trades) {
+    const days = computeDailyStats(trades);
+    const cur  = currentCurrency;
+
+    days.sort((a, b) => {
+      let av = a[dailySortKey], bv = b[dailySortKey];
+      if (dailySortKey === 'date') { av = av.getTime(); bv = bv.getTime(); }
+      return dailySortDir * (av - bv);
+    });
+
+    const tbody = document.getElementById('dailyTableBody');
+    if (days.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--muted);">No trades match the current filters.</td></tr>`;
+    } else {
+      tbody.innerHTML = days.map(d => {
+        const netClass = d.net >= 0 ? 'pos' : 'neg';
+        const netSign  = d.net >= 0 ? '+' : '';
+        const pf = d.profitFactor === Infinity ? '∞' : d.profitFactor > 0 ? d.profitFactor.toFixed(2) : '—';
+        return `
+          <tr>
+            <td>${d.dateStr}</td>
+            <td>${d.count}</td>
+            <td class="pos">${d.wins}</td>
+            <td class="neg">${d.losses}</td>
+            <td>${d.winRate.toFixed(1)}%</td>
+            <td class="pos">${d.grossWin > 0 ? `+${cur}${d.grossWin.toFixed(2)}` : `${cur}0.00`}</td>
+            <td class="neg">${d.grossLoss > 0 ? `-${cur}${d.grossLoss.toFixed(2)}` : `${cur}0.00`}</td>
+            <td class="${netClass}" style="font-weight:600">${netSign}${cur}${Math.abs(d.net).toFixed(2)}</td>
+            <td class="${pf !== '—' && parseFloat(pf) >= 1 ? 'pos' : 'neg'}">${pf}</td>
+            <td>${cur}${d.maxDrawdown.toFixed(2)}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('dailyCountText').textContent =
+      `${days.length} trading day${days.length !== 1 ? 's' : ''} · ${trades.length} trade${trades.length !== 1 ? 's' : ''}`;
+
+    // ── Summary cards ──
+    const totalDays  = days.length;
+    const profitDays = days.filter(d => d.net > 0);
+    const lossDays   = days.filter(d => d.net < 0);
+    const dayWinRate = totalDays ? (profitDays.length / totalDays) * 100 : 0;
+    const bestDay    = totalDays ? days.reduce((a, b) => b.net > a.net ? b : a) : null;
+    const worstDay   = totalDays ? days.reduce((a, b) => b.net < a.net ? b : a) : null;
+    const avgDaily   = totalDays ? days.reduce((s, d) => s + d.net, 0) / totalDays : 0;
+    const overallDD  = computeOverallMaxDrawdown(trades);
+
+    const setCard = (id, text, cls) => {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = `card-value${cls ? ' ' + cls : ''}`;
+    };
+
+    setCard('dailyTotalDays',  totalDays, 'neutral');
+    setCard('dailyProfitDays', profitDays.length, 'pos');
+    setCard('dailyLossDays',   lossDays.length, 'neg');
+    setCard('dailyWinRate',    `${dayWinRate.toFixed(1)}%`, 'neutral');
+    setCard('dailyBestDay',    bestDay  ? `+${cur}${bestDay.net.toFixed(2)} (${bestDay.dateStr})`  : '—', 'pos');
+    setCard('dailyWorstDay',   worstDay ? `${worstDay.net < 0 ? '-' : ''}${cur}${Math.abs(worstDay.net).toFixed(2)} (${worstDay.dateStr})` : '—', 'neg');
+    setCard('dailyAvgPnl',     totalDays ? `${avgDaily >= 0 ? '+' : '-'}${cur}${Math.abs(avgDaily).toFixed(2)}` : '—', avgDaily >= 0 ? 'pos' : 'neg');
+    setCard('dailyMaxDD',      `${cur}${overallDD.toFixed(2)}`, 'neg');
+  }
+
+  function sortDailyBy(key) {
+    if (dailySortKey === key) dailySortDir *= -1;
+    else { dailySortKey = key; dailySortDir = -1; }
+
+    document.querySelectorAll('th[id^="dth-"]').forEach(th => th.classList.remove('sorted'));
+    const thEl = document.getElementById(`dth-${key}`);
+    if (thEl) {
+      thEl.classList.add('sorted');
+      const icon = thEl.querySelector('.sort-icon');
+      if (icon) icon.textContent = dailySortDir === -1 ? '↓' : '↑';
+    }
+
+    renderDaily(filteredTrades);
+  }
+
+  // ── Tabs ───────────────────────────────────────────────────────
+  function switchTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.getElementById('avgSummary').style.display = tab === 'symbols' ? 'block' : 'none';
+    document.getElementById('tableWrap').style.display  = tab === 'trades'  ? 'block' : 'none';
+    document.getElementById('groupsWrap').style.display  = tab === 'groups' ? 'block' : 'none';
+    document.getElementById('dailyWrap').style.display   = tab === 'daily'  ? 'block' : 'none';
+  }
+
+  // ── Sort ───────────────────────────────────────────────────────
+  function sortBy(key) {
+    if (sortKey === key) sortDir *= -1;
+    else { sortKey = key; sortDir = -1; }
+
+    document.querySelectorAll('th[id^="th-"]').forEach(th => th.classList.remove('sorted'));
+    const thEl = document.getElementById(`th-${key}`);
+    if (thEl) {
+      thEl.classList.add('sorted');
+      const icon = thEl.querySelector('.sort-icon');
+      if (icon) icon.textContent = sortDir === -1 ? '↓' : '↑';
+    }
+
+    applyFilters();
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function shiftDate(inputId, days) {
+    const el = document.getElementById(inputId);
+    if (!el.value) return;
+    const dt = new Date(el.value + 'T00:00:00');
+    dt.setDate(dt.getDate() + days);
+    el.value = toInputDate(dt);
+    applyFilters();
+  }
+
+  // ── Fixed date-period mode (D/W/M/Y with prev/next stepping) ────
+  let datePeriodMode   = null; // null | 'D' | 'W' | 'M' | 'Y' — null means free date selection
+  let datePeriodOffset = 0;    // periods away from the one containing today
+
+  function computePeriodRange(mode, offset) {
+    const now = new Date();
+    let from, to;
+    if (mode === 'D') {
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+      to   = from;
+    } else if (mode === 'W') {
+      const day = now.getDay();
+      const diffToMonday = (day === 0 ? -6 : 1 - day);
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday + offset * 7);
+      to   = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 6);
+    } else if (mode === 'M') {
+      from = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+      to   = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
+    } else if (mode === 'Y') {
+      from = new Date(now.getFullYear() + offset, 0, 1);
+      to   = new Date(now.getFullYear() + offset, 11, 31);
+    }
+    return { from, to };
+  }
+
+  function formatPeriodLabel(mode, from, to) {
+    if (mode === 'D') return from.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    if (mode === 'W') return `${from.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} – ${to.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    if (mode === 'M') return from.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    if (mode === 'Y') return String(from.getFullYear());
+    return '';
+  }
+
+  // Pressing D/W/M/Y fixes the range to that period (anchored on today) and
+  // switches on prev/next stepping; manual date selection is locked until ✕ is pressed.
+  function setDatePreset(preset) {
+    datePeriodMode   = preset;
+    datePeriodOffset = 0;
+    applyDatePeriod();
+  }
+
+  function shiftDatePeriod(delta) {
+    if (!datePeriodMode) return;
+    datePeriodOffset += delta;
+    applyDatePeriod();
+  }
+
+  function applyDatePeriod() {
+    const { from, to } = computePeriodRange(datePeriodMode, datePeriodOffset);
+    document.getElementById('dateFrom').value = toInputDate(from);
+    document.getElementById('dateTo').value   = toInputDate(to);
+    updateDatePeriodUI();
+    applyFilters();
+  }
+
+  function updateDatePeriodUI() {
+    const active = !!datePeriodMode;
+    document.getElementById('presetRow').style.display = active ? 'none' : 'flex';
+    document.getElementById('periodNav').style.display  = active ? 'flex' : 'none';
+
+    document.getElementById('dateFrom').disabled = active;
+    document.getElementById('dateTo').disabled   = active;
+    document.getElementById('dateFromShiftBtns').querySelectorAll('button').forEach(b => b.disabled = active);
+    document.getElementById('dateToShiftBtns').querySelectorAll('button').forEach(b => b.disabled = active);
+
+    if (active) {
+      const { from, to } = computePeriodRange(datePeriodMode, datePeriodOffset);
+      document.getElementById('periodLabel').textContent = formatPeriodLabel(datePeriodMode, from, to);
+    }
+  }
+
+  // ✕ — drop the fixed period and hand date selection back to the from/to inputs.
+  function exitDatePeriodMode() {
+    datePeriodMode   = null;
+    datePeriodOffset = 0;
+    updateDatePeriodUI();
+  }
+
+  function toInputDate(dt) {
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const d = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function showUI() {
+    document.getElementById('controls').style.display    = 'flex';
+    document.getElementById('simSection').style.display  = 'block';
+    document.getElementById('summary').style.display     = 'flex';
+    document.getElementById('dataTabs').style.display    = 'flex';
+    document.getElementById('emptyState').style.display  = 'none';
+    switchTab(activeTab);
+  }
+
+  function showEmpty(msg) {
+    document.getElementById('controls').style.display    = 'none';
+    document.getElementById('simSection').style.display  = 'none';
+    document.getElementById('simBanner').style.display   = 'none';
+    document.getElementById('summary').style.display     = 'none';
+    document.getElementById('dataTabs').style.display    = 'none';
+    document.getElementById('avgSummary').style.display  = 'none';
+    document.getElementById('tableWrap').style.display   = 'none';
+    document.getElementById('groupsWrap').style.display  = 'none';
+    document.getElementById('dailyWrap').style.display   = 'none';
+    const es = document.getElementById('emptyState');
+    es.style.display = 'block';
+    es.querySelector('p').innerHTML = msg || 'Paste trade data above to get started.';
+  }
+
+  function clearFilters() {
+    exitDatePeriodMode();
+    const sorted = [...allTrades].sort((a,b) => a.dt - b.dt);
+    if (sorted.length) {
+      document.getElementById('dateFrom').value = toInputDate(sorted[0].dt);
+      document.getElementById('dateTo').value   = toInputDate(sorted[sorted.length-1].dt);
+    }
+    document.getElementById('symbolFilter').value = '';
+    document.getElementById('dirFilter').value    = '';
+    document.getElementById('lotOp').value        = '';
+    document.getElementById('lotVal').value       = '';
+    clearSimulation();
+  }
+
+  function clearAll() {
+    exitDatePeriodMode();
+    allTrades = [];
+    filteredTrades = [];
+    currentCurrency = '$';
+    document.getElementById('rawInput').value = '';
+    document.getElementById('errorBanner').style.display = 'none';
+    setParseStatus(null, '');
+    document.getElementById('xlsxImport').value = '';
+    document.getElementById('currencyBadge').style.display = 'none';
+    clearSimulation();
+    showEmpty();
+  }
+
+  // ── Export ─────────────────────────────────────────────────────
+  function exportToExcel() {
+    // Export exactly what's currently on screen — reuse the stored filter/sort
+    // view rather than re-deriving it, so export can never drift from the table.
+    const filtered = filteredTrades;
+
+    if (filtered.length === 0) {
+      alert('No trades to export with the current filters.');
+      return;
+    }
+
+    // Build header — include sim columns if active
+    const mode       = getSimMode();
+    const hasSim     = !!getSimBannerText(); // only if inputs are valid
+    const modeNames  = { fixed: 'Simulated PnL (fixed lot)', proportion: 'Simulated PnL (proportion)', balance: 'Simulated PnL (copy trade)' };
+    const pnlColName = `PnL (${currencyLabel(currentCurrency)})`;
+    let header = ['Date', 'Time', 'Direction', 'Symbol', 'Volume', 'Entry Price', pnlColName];
+    if (hasSim) header.push('Sim Lot', modeNames[mode] || 'Simulated PnL');
+    header.push('Trade ID');
+
+    const rows = filtered.map(t => {
+      const base = [t.dateStr, t.timeStr, t.direction, t.symbol, t.volume, t.price, t.pnl];
+      if (hasSim) {
+        const sim = getSimResult(t);
+        base.push(sim ? sim.copyLot : '', sim ? parseFloat(sim.displayPnl.toFixed(2)) : '');
+      }
+      base.push(t.tradeId);
+      return base;
+    });
+
+    // Summary total — use simulated P&L if active, consistent with the on-screen totals
+    const totalPnl = filtered.reduce((s, t) => s + getPnl(t), 0);
+    const wins     = filtered.filter(t => getPnl(t) > 0).length;
+    const losses   = filtered.filter(t => getPnl(t) < 0).length;
+    const wr       = filtered.length ? ((wins / filtered.length) * 100).toFixed(1) : '0.0';
+
+    const summaryRows = [
+      [],
+      ['Summary', '', '', '', '', '', '', ''],
+      ['Total Trades', filtered.length],
+      ['Wins',         wins],
+      ['Losses',       losses],
+      ['Win Rate',     wr + '%'],
+      ['Total P&L',    totalPnl.toFixed(2)]
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows, ...summaryRows]);
+
+    // Column widths
+    ws['!cols'] = hasSim
+      ? [{wch:12},{wch:10},{wch:10},{wch:10},{wch:8},{wch:14},{wch:12},{wch:10},{wch:30},{wch:14}]
+      : [{wch:12},{wch:10},{wch:10},{wch:10},{wch:8},{wch:14},{wch:12},{wch:14}];
+
+    // Style header row bold (SheetJS CE doesn't do full styling, but set bold via cell metadata where possible)
+    header.forEach((_, ci) => {
+      const cellRef = XLSX.utils.encode_cell({r:0, c:ci});
+      if (ws[cellRef]) ws[cellRef].s = { font: { bold: true } };
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Trades');
+
+    const dateTag = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `trade-journal-${dateTag}.xlsx`);
+  }
+
+  // ── Import ─────────────────────────────────────────────────────
+  function importFromExcel(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const wb   = XLSX.read(data, { type: 'array' });
+        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+        if (rows.length < 2) throw new Error('No data rows found.');
+
+        // Find the header row (first row matching expected columns)
+        const headerRow = rows[0].map(h => String(h).trim().toLowerCase());
+        const colDate  = headerRow.indexOf('date');
+        const colTime  = headerRow.indexOf('time');
+        const colDir   = headerRow.indexOf('direction');
+        const colSym   = headerRow.indexOf('symbol');
+        const colVol   = headerRow.indexOf('volume');
+        const colPrice = headerRow.indexOf('entry price');
+        // PnL column may be "pnl (usd)", "pnl (€ (eur))", or just "pnl (...)"
+        const colPnl   = headerRow.findIndex(h => h.startsWith('pnl ('));
+        const colId    = headerRow.indexOf('trade id');
+
+        if ([colDate,colTime,colDir,colSym,colVol,colPrice,colPnl,colId].some(c => c === -1)) {
+          throw new Error('Column headers not recognised. Make sure you are importing a Trade Journal export.');
+        }
+
+        // Detect currency from the PnL column header, e.g. "PnL ($ (USD))" → "$"
+        const pnlHeader = rows[0][colPnl] || '';
+        const currMatch = pnlHeader.match(/\(([^\d\w\s]{1,4})/);
+        currentCurrency = currMatch ? currMatch[1] : '$';
+
+        const trades = [];
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          // Stop at blank/summary rows
+          if (!row[colDate] || !row[colDir]) continue;
+          const dateStr  = String(row[colDate]).trim();
+          const timeStr  = String(row[colTime]).trim();
+          const direction= String(row[colDir]).trim();
+          const symbol   = String(row[colSym]).trim();
+          const volume   = parseFloat(row[colVol]);
+          const price    = parseFloat(row[colPrice]);
+          const pnl      = parseFloat(row[colPnl]);
+          const tradeId  = String(row[colId]).trim();
+
+          if (isNaN(volume) || isNaN(price) || isNaN(pnl)) continue;
+
+          // dateStr is dd/mm/yyyy
+          const [dd, mm, yyyy] = dateStr.split('/');
+          const dt = new Date(`${yyyy}-${mm}-${dd}T${timeStr}`);
+          if (isNaN(dt)) continue;
+
+          trades.push({ direction, volume, symbol, price, pnl, dateStr, timeStr, tradeId, dt });
+        }
+
+        if (trades.length === 0) throw new Error('No valid trade rows found in the file.');
+
+        const deduped = dedupeByTradeId(trades);
+        allTrades = deduped.trades;
+
+        const banner = document.getElementById('errorBanner');
+        if (deduped.duplicates > 0) {
+          banner.textContent = `Removed ${deduped.duplicates} duplicate trade${deduped.duplicates !== 1 ? 's' : ''} (matching Trade ID).`;
+          banner.style.display = 'block';
+        } else {
+          banner.style.display = 'none';
+        }
+
+        // Populate symbol filter
+        const symbols = [...new Set(allTrades.map(t => t.symbol))].sort();
+        const symSel = document.getElementById('symbolFilter');
+        symSel.innerHTML = '<option value="">All symbols</option>' +
+          symbols.map(s => `<option value="${s}">${s}</option>`).join('');
+
+        exitDatePeriodMode();
+        const sorted = [...allTrades].sort((a,b) => a.dt - b.dt);
+        document.getElementById('dateFrom').value = toInputDate(sorted[0].dt);
+        document.getElementById('dateTo').value   = toInputDate(sorted[sorted.length-1].dt);
+        document.getElementById('dirFilter').value = '';
+
+        showUI();
+        applyFilters();
+
+        // Reset the file input so the same file can be re-imported later
+        event.target.value = '';
+
+      } catch(err) {
+        const banner = document.getElementById('errorBanner');
+        banner.textContent = 'Import failed: ' + err.message;
+        banner.style.display = 'block';
+        event.target.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+</script>
+</body>
+</html>
