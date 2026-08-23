@@ -442,6 +442,7 @@
   }
   .sim-banner button:hover { background: rgba(139,92,246,0.12); opacity:1; }
   .pnl-orig { font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+  .orig-note { font-size: 11px; color: var(--muted); font-weight: 400; }
 
   .import-label {
     display: inline-flex;
@@ -458,26 +459,196 @@
     background: transparent;
   }
   .import-label:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Landing page ── */
+  .landing-choices {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .landing-card {
+    flex: 1;
+    min-width: 240px;
+    text-align: left;
+    padding: 22px 24px;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+  .landing-card .landing-desc {
+    display: block;
+    font-weight: 400;
+    font-size: 12px;
+    opacity: 0.85;
+    margin-top: 6px;
+  }
+
+  .nav-row { display: flex; gap: 8px; margin-bottom: 12px; }
+
+  /* ── Provider report banner (copier flow) ── */
+  .provider-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(79,142,247,0.08);
+    border: 1px solid rgba(79,142,247,0.35);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--accent);
+  }
+  .provider-banner strong { font-weight: 700; }
+
+  .provider-row:hover td { background: var(--surface2); }
 </style>
 </head>
 <body>
 
-<h1>Trade Journal</h1>
-<p class="subtitle">Paste your trade history, filter by date, and review your P&amp;L.</p>
-
-<!-- Paste section -->
-<div class="paste-section">
-  <label>Raw Trade Data</label>
-  <textarea id="rawInput" placeholder="Sell0.01 XAUUSD @ 4029.07&#10;$1.38&#10;30/06/2026 07:21:33 | 4451015068&#10;&#10;Paste multiple entries — each trade is 3 lines."></textarea>
-  <div class="parse-status-tag" id="parseStatusTag"></div>
-  <div class="btn-row">
-    <button class="btn-primary" onclick="parseAndRender()">Parse Trades</button>
-    <button class="btn-ghost" onclick="clearAll()">Clear</button>
-    <label class="import-label" for="xlsxImport" title="Import a previously exported Trade Journal .xlsx file">
-      ⬆ Import Excel
-    </label>
-    <input type="file" id="xlsxImport" accept=".xlsx,.xls" onchange="importFromExcel(event)" />
+<!-- Landing page: choose a workflow -->
+<div id="landingPage">
+  <h1>Trade Journal</h1>
+  <p class="subtitle">Choose a workflow to get started.</p>
+  <div class="landing-choices">
+    <button class="btn-primary landing-card" onclick="goToSimulation()">
+      🧮 Copy Simulation
+      <span class="landing-desc">Paste your own trade history and run what-if copy-trading simulations (fixed lot, proportion, or balance-ratio sizing).</span>
+    </button>
+    <button class="btn-excel landing-card" onclick="goToCopierInput()">
+      📊 Copier Report
+      <span class="landing-desc">Paste a list of trades copied from multiple providers and compare each provider's performance.</span>
+    </button>
   </div>
+</div>
+
+<!-- Copy Simulation page -->
+<div id="simulationPasteSection" style="display:none">
+  <div class="nav-row">
+    <button class="btn-ghost" onclick="goHome()">← Home</button>
+  </div>
+  <h1>Copy Simulation</h1>
+  <p class="subtitle">Paste your trade history, filter by date, and review your P&amp;L.</p>
+
+  <!-- Paste section -->
+  <div class="paste-section">
+    <label>Raw Trade Data</label>
+    <textarea id="rawInput" placeholder="Sell0.01 XAUUSD @ 4029.07&#10;$1.38&#10;30/06/2026 07:21:33 | 4451015068&#10;&#10;Paste multiple entries — each trade is 3 lines."></textarea>
+    <div class="parse-status-tag" id="parseStatusTag"></div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="parseAndRender()">Parse Trades</button>
+      <button class="btn-ghost" onclick="clearAll()">Clear</button>
+      <label class="import-label" for="xlsxImport" title="Import a previously exported Trade Journal .xlsx file">
+        ⬆ Import Excel
+      </label>
+      <input type="file" id="xlsxImport" accept=".xlsx,.xls" onchange="importFromExcel(event)" />
+    </div>
+  </div>
+</div>
+
+<!-- Copier Report: paste step -->
+<div id="copierInputSection" style="display:none">
+  <div class="nav-row">
+    <button class="btn-ghost" onclick="goHome()">← Home</button>
+  </div>
+  <h1>Copier Report</h1>
+  <p class="subtitle">Paste copied trades from multiple providers — each entry should have the provider name above its trade lines.</p>
+
+  <div class="paste-section">
+    <label>Raw Copier Trade Data</label>
+    <textarea id="copierRawInput" placeholder="🏆CopyADK Gold 10k Challenge&#10;USD 0.07&#10;Buy0.01 XAUUSD @ 4329.71&#10;14/08/2026 06:31:25 | 90623945&#10;&#10;Paste multiple entries — each trade is 4 lines: provider, P&amp;L, action, date/time | ID."></textarea>
+    <div class="parse-status-tag" id="copierParseStatusTag"></div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="parseCopierAndRender()">Parse Trades</button>
+      <button class="btn-ghost" onclick="clearCopierInput()">Clear</button>
+    </div>
+  </div>
+</div>
+
+<!-- Copier Report: provider performance table -->
+<div id="copierReportSection" style="display:none">
+  <div class="nav-row">
+    <button class="btn-ghost" onclick="goHome()">← Home</button>
+    <button class="btn-ghost" onclick="backToCopierInput()">← Edit Data</button>
+    <button class="btn-primary" onclick="selectAllProviders()" style="margin-left:auto;">📈 Overall Report — All Providers</button>
+  </div>
+  <h1>Copier Report</h1>
+  <p class="subtitle">Performance by trade provider — click a row to see its full trading report, or view the combined report above.</p>
+
+  <!-- Date range — same From/To + shift buttons + D/W/M/Y presets as the Copy Simulation page,
+       filtering which trades feed the provider table, drill-down report, and Overall Report. -->
+  <div class="controls" id="copierControls">
+    <div class="ctrl-group">
+      <label>From</label>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <input type="date" id="copierDateFrom" onchange="applyCopierDateFilter()" />
+        <div id="copierDateFromShiftBtns" style="display:flex;flex-direction:column;gap:2px;">
+          <button class="btn-ghost" onclick="shiftCopierDate('copierDateFrom', 1)"
+                  style="padding:1px 6px;font-size:11px;line-height:1.4;" title="Next day">▲</button>
+          <button class="btn-ghost" onclick="shiftCopierDate('copierDateFrom', -1)"
+                  style="padding:1px 6px;font-size:11px;line-height:1.4;" title="Previous day">▼</button>
+        </div>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <label>To</label>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <input type="date" id="copierDateTo" onchange="applyCopierDateFilter()" />
+        <div id="copierDateToShiftBtns" style="display:flex;flex-direction:column;gap:2px;">
+          <button class="btn-ghost" onclick="shiftCopierDate('copierDateTo', 1)"
+                  style="padding:1px 6px;font-size:11px;line-height:1.4;" title="Next day">▲</button>
+          <button class="btn-ghost" onclick="shiftCopierDate('copierDateTo', -1)"
+                  style="padding:1px 6px;font-size:11px;line-height:1.4;" title="Previous day">▼</button>
+        </div>
+      </div>
+      <div class="preset-row" id="copierPresetRow">
+        <button class="btn-preset" onclick="setCopierDatePreset('D')" title="Fix to a single day, with prev/next">D</button>
+        <button class="btn-preset" onclick="setCopierDatePreset('W')" title="Fix to a week, with prev/next">W</button>
+        <button class="btn-preset" onclick="setCopierDatePreset('M')" title="Fix to a month, with prev/next">M</button>
+        <button class="btn-preset" onclick="setCopierDatePreset('Y')" title="Fix to a year, with prev/next">Y</button>
+      </div>
+      <div class="preset-row" id="copierPeriodNav" style="display:none;align-items:center;gap:6px;">
+        <button class="btn-preset" onclick="shiftCopierDatePeriod(-1)" title="Previous">◀</button>
+        <span id="copierPeriodLabel" style="font-size:12px;color:var(--muted);white-space:nowrap;"></span>
+        <button class="btn-preset" onclick="shiftCopierDatePeriod(1)" title="Next">▶</button>
+        <button class="btn-preset" onclick="exitCopierDatePeriodMode()" title="Exit fixed range, allow manual date selection">✕</button>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="ctrl-group">
+      <label>&nbsp;</label>
+      <button class="btn-ghost" onclick="resetCopierDateFilter()">Reset range</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Provider</th>
+          <th>Trades</th>
+          <th>Wins</th>
+          <th>Losses</th>
+          <th>Win Rate</th>
+          <th>Profit Factor</th>
+          <th>Total P&amp;L</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="providerTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Shared between the copier-input and copier-report pages so parse warnings
+     (e.g. an unparseable trade line) stay visible after auto-advancing to the
+     provider table, not just at the moment of parsing. -->
+<div class="error-banner" id="copierErrorBanner"></div>
+
+<!-- Copier Report: single-provider detail banner (shared report area below shows that provider's trades) -->
+<div class="provider-banner" id="providerDetailBanner" style="display:none">
+  <button class="btn-ghost" onclick="goHome()">← Home</button>
+  <button class="btn-ghost" onclick="backToProviderList()">← All Providers</button>
+  <span>Showing report for <strong id="selectedProviderName"></strong></span>
 </div>
 
 <!-- Controls -->
@@ -579,7 +750,7 @@
     <div class="sim-sub" id="simFixedInputs">
       <div class="ctrl-group">
         <label style="color:#a78bfa;">Lot size</label>
-        <input type="number" class="sim-input" id="simFixedLot" min="0.01" step="0.01" placeholder="e.g. 0.02"
+        <input type="number" class="sim-input" id="simFixedLot" min="0.001" step="0.001" placeholder="e.g. 0.002"
                oninput="applyFilters()" />
       </div>
     </div>
@@ -613,7 +784,7 @@
     <div class="sim-sub" id="simMinInputs">
       <div class="ctrl-group">
         <label style="color:#a78bfa;">Min lot size</label>
-        <input type="number" class="sim-input" id="simMinLot" min="0.0001" step="0.01" value="0.01"
+        <input type="number" class="sim-input" id="simMinLot" min="0.0001" step="0.001" value="0.001"
                oninput="applyFilters()" />
       </div>
       <div class="ctrl-group">
@@ -799,7 +970,7 @@
 </div>
 
 <!-- Empty state (shown when no trades loaded yet) -->
-<div class="empty-state" id="emptyState">
+<div class="empty-state" id="emptyState" style="display:none">
   <div class="empty-icon">📋</div>
   <p>Paste your trade history above and click <strong>Parse Trades</strong>.<br/>Each trade should be 3 lines: action line, P&amp;L line, and datetime/ID line.</p>
 </div>
@@ -821,6 +992,78 @@
 
   const GROUP_GAP_MS = 10 * 1000; // trades closed within this many ms of the previous one join the same group
 
+  // ── Pages ──────────────────────────────────────────────────────
+  // 'landing' | 'simulation' | 'copier-input' | 'copier-report' | 'copier-detail'.
+  // 'simulation' and 'copier-detail' both drive the same shared report widgets
+  // (controls/summary/tabs/tables) below — they only differ in what's parsed
+  // into `allTrades` and which header is shown above that shared area.
+  let appMode = 'landing';
+  let copierTrades = [];         // every parsed copier trade, across all providers, each tagged with .provider
+  let copierFilteredTrades = []; // copierTrades narrowed by the copier date-range controls — what the provider table/drill-down/Overall Report actually use
+  let copierCurrency = '$';
+  let selectedProvider = null;
+  let currentProviderStats = []; // last-rendered provider table rows, indexed for click-to-select
+
+  function hideReportArea() {
+    document.getElementById('controls').style.display    = 'none';
+    document.getElementById('simSection').style.display  = 'none';
+    document.getElementById('simBanner').style.display   = 'none';
+    document.getElementById('summary').style.display     = 'none';
+    document.getElementById('dataTabs').style.display    = 'none';
+    document.getElementById('avgSummary').style.display  = 'none';
+    document.getElementById('tableWrap').style.display   = 'none';
+    document.getElementById('groupsWrap').style.display  = 'none';
+    document.getElementById('dailyWrap').style.display   = 'none';
+    document.getElementById('emptyState').style.display  = 'none';
+    document.getElementById('errorBanner').style.display = 'none';
+  }
+
+  function showPage(mode) {
+    appMode = mode;
+    document.getElementById('landingPage').style.display            = mode === 'landing'       ? 'block' : 'none';
+    document.getElementById('simulationPasteSection').style.display = mode === 'simulation'     ? 'block' : 'none';
+    document.getElementById('copierInputSection').style.display     = mode === 'copier-input'   ? 'block' : 'none';
+    document.getElementById('copierReportSection').style.display    = mode === 'copier-report'  ? 'block' : 'none';
+    document.getElementById('providerDetailBanner').style.display   = mode === 'copier-detail'  ? 'flex'  : 'none';
+
+    // copierErrorBanner is shared across copier-input/copier-report (see markup
+    // comment) so a parse warning survives the auto-advance to the provider
+    // table — only force it closed once we leave that context entirely.
+    if (mode !== 'copier-input' && mode !== 'copier-report') {
+      document.getElementById('copierErrorBanner').style.display = 'none';
+    }
+
+    // Only simulation and copier-detail use the shared report widgets — every
+    // other page starts from a clean slate.
+    if (mode !== 'simulation' && mode !== 'copier-detail') hideReportArea();
+  }
+
+  function goHome() {
+    clearAll(); // resets simulation input/allTrades/currency and hides the shared report area
+    copierTrades = [];
+    copierFilteredTrades = [];
+    selectedProvider = null;
+    clearCopierInput();
+    showPage('landing');
+  }
+
+  function goToSimulation() {
+    showPage('simulation');
+    showEmpty(); // goHome() always clears allTrades before returning to landing, so this is always a fresh start
+  }
+
+  function goToCopierInput() {
+    showPage('copier-input');
+  }
+
+  function backToCopierInput() {
+    showPage('copier-input');
+  }
+
+  function backToProviderList() {
+    showPage('copier-report');
+  }
+
   // Map symbol → friendly name for display
   const CURRENCY_NAMES = {
     '$': 'USD', '€': 'EUR', '£': 'GBP', '¥': 'JPY / CNY',
@@ -831,14 +1074,37 @@
     return CURRENCY_NAMES[sym] ? `${sym} (${CURRENCY_NAMES[sym]})` : sym;
   }
 
+  // Some platforms print the ISO code (e.g. "USD 196.56") instead of the symbol
+  // ("$196.56"). Map those codes back to the symbol used everywhere else so a
+  // paste mixing both forms of the same currency doesn't trip the mismatch check.
+  const CURRENCY_CODE_TO_SYMBOL = {
+    USD: '$', EUR: '€', GBP: '£', JPY: '¥', CNY: '¥',
+    INR: '₹', KRW: '₩', RUB: '₽', ZAR: 'R',
+    SEK: 'kr', NOK: 'kr', DKK: 'kr', CHF: 'CHF',
+  };
+  function normalizeCurrency(token) {
+    return CURRENCY_CODE_TO_SYMBOL[token.toUpperCase()] || token;
+  }
+
   // ── Unified Simulation ─────────────────────────────────────────
+  // Finest lot granularity the proportion/balance modes will round down to —
+  // simulated sizes can go as small as 0.001 lots by default.
+  const LOT_STEP = 0.001;
+
+  // Rounds a lot size to LOT_STEP's precision, clearing the tiny binary
+  // floating-point noise Math.floor(x / step) * step can leave behind
+  // (e.g. 0.047000000000000003), which would otherwise leak into exports.
+  function roundLot(v) {
+    return Math.round(v * 1000) / 1000;
+  }
+
   function getSimMode() {
     return document.getElementById('simMode').value;
   }
 
   function getSimMinLot() {
     const v = parseFloat(document.getElementById('simMinLot').value);
-    return (!isNaN(v) && v > 0) ? v : 0.01;
+    return (!isNaN(v) && v > 0) ? v : LOT_STEP;
   }
 
   function getSimRoundUp() {
@@ -868,21 +1134,21 @@
       return {
         displayPnl: t.pnl * (lot / t.volume),
         copyLot: lot,
-        note: `fixed @ ${lot.toFixed(2)} lots`
+        note: `fixed @ ${lot.toFixed(3)} lots`
       };
     }
 
     if (mode === 'proportion') {
       const prop = parseFloat(document.getElementById('simProportion').value);
       if (isNaN(prop) || prop <= 0 || t.volume === 0) return null;
-      const rawLot = Math.floor(t.volume * prop / 0.01) * 0.01;
+      const rawLot = roundLot(Math.floor(t.volume * prop / LOT_STEP) * LOT_STEP);
       const min = applyMinLot(rawLot);
       if (min.filtered) return { filtered: true };
       const copyLot = min.copyLot;
       return {
         displayPnl: t.pnl * (copyLot / t.volume),
         copyLot,
-        note: `prop ${prop.toFixed(4)}× → ${copyLot.toFixed(2)} lots`
+        note: `prop ${prop.toFixed(4)}× → ${copyLot.toFixed(3)} lots`
       };
     }
 
@@ -891,7 +1157,7 @@
       const copier = parseFloat(document.getElementById('simCopierBal').value);
       if (isNaN(master) || isNaN(copier) || master <= 0 || copier <= 0 || t.volume === 0) return null;
       const ratio   = copier / master;
-      const rawLot  = Math.floor(t.volume * ratio / 0.01) * 0.01;
+      const rawLot  = roundLot(Math.floor(t.volume * ratio / LOT_STEP) * LOT_STEP);
       const min     = applyMinLot(rawLot);
       if (min.filtered) return { filtered: true };
       const copyLot = min.copyLot;
@@ -899,7 +1165,7 @@
         displayPnl: t.pnl * (copyLot / t.volume),
         copyLot,
         ratio,
-        note: `ratio ${ratio.toFixed(4)}× → ${copyLot.toFixed(2)} lots`
+        note: `ratio ${ratio.toFixed(4)}× → ${copyLot.toFixed(3)} lots`
       };
     }
 
@@ -911,6 +1177,25 @@
   function getPnl(t) {
     const sim = getSimResult(t);
     return (sim && !sim.filtered) ? sim.displayPnl : t.pnl;
+  }
+
+  // True only when a simulation mode is selected AND its inputs are complete
+  // enough to produce a result — the same gate the banner/table note use, so
+  // the "original value" annotations appear exactly when the sim is actually affecting numbers.
+  function isSimActive() {
+    return getSimMode() !== 'none' && !!getSimBannerText();
+  }
+
+  // Signed "+$1.23" / "-$1.23" string for a raw (non-simulated) P&L value —
+  // used for the grey original-value annotations in the summary tabs.
+  function fmtPnlPlain(v) {
+    return `${v >= 0 ? '+' : '-'}${currentCurrency}${Math.abs(v).toFixed(2)}`;
+  }
+
+  // Wraps a pre-formatted original-value string in the muted inline annotation
+  // shown next to a simulated figure, e.g. "+$12.00 (+$10.00)".
+  function origNote(text) {
+    return ` <span class="orig-note">(${text})</span>`;
   }
 
   function getSimBannerText() {
@@ -937,7 +1222,7 @@
 
   // Short clause describing current minimum-lot-size handling, for banner text.
   function getMinLotBannerNote() {
-    const min = getSimMinLot().toFixed(2);
+    const min = getSimMinLot().toFixed(3);
     return getSimRoundUp() ? `min ${min}, rounded up` : `min ${min}, smaller trades filtered out`;
   }
 
@@ -982,7 +1267,7 @@
     document.getElementById('simProportion').value = '';
     document.getElementById('simMasterBal').value  = '';
     document.getElementById('simCopierBal').value  = '';
-    document.getElementById('simMinLot').value     = '0.01';
+    document.getElementById('simMinLot').value     = '0.001';
     document.getElementById('simRoundUp').checked  = true;
     document.getElementById('simPropChip').style.display = 'none';
     document.getElementById('simBalChip').style.display  = 'none';
@@ -1004,16 +1289,65 @@
   }
 
   // ── Parse ──────────────────────────────────────────────────────
+  // Normalizes a numeric string that may use comma and/or dot as the decimal
+  // separator, with the other acting as a thousands-grouping separator —
+  // e.g. "10,896.75" (US), "10.896,75" (EU), and "1,38" all become plain
+  // decimal strings ("10896.75", "10896.75", "1.38") so parseFloat reads the
+  // intended value instead of silently truncating at a stray separator.
+  function normalizeNumberStr(str) {
+    const hasComma = str.includes(',');
+    const hasDot   = str.includes('.');
+    if (hasComma && hasDot) {
+      return str.lastIndexOf(',') > str.lastIndexOf('.')
+        ? str.replace(/\./g, '').replace(',', '.')  // comma is the decimal separator, dots are thousands
+        : str.replace(/,/g, '');                    // dot is the decimal separator, commas are thousands
+    }
+    if (hasComma) {
+      const parts = str.split(',');
+      // A single comma followed by 1–2 digits reads as a decimal separator (cents);
+      // anything else (3-digit groups, multiple commas) is thousands grouping.
+      return (parts.length === 2 && parts[1].length <= 2)
+        ? str.replace(',', '.')
+        : str.replace(/,/g, '');
+    }
+    return str;
+  }
+
+  // Line 2 of a trade block: any currency — e.g. $1.38, -€2.50, £-0.75, ¥120,
+  // R5.00, USD 196.56. Groups: [1]=leading minus, [2]=currency symbol/code,
+  // [3]=number (may start with minus). Optional whitespace between the
+  // currency and the amount covers ISO-code forms like "USD 196.56".
+  const RE_PNL = /^(-?)([^\d\s.,\-]+)\s*(-?[\d.,]+)$/;
+  // Some platforms show a not-yet-settled trade's P&L as a placeholder made of
+  // dashes and a decimal point instead of a real number (e.g. "USD --.--") —
+  // treat that as an actual $0.00 P&L rather than a parse failure.
+  const RE_PNL_PLACEHOLDER = /^([^\d\s.,\-]+)\s*-[-.]*$/;
+
+  // Parses a P&L line into {currency, pnl}, or null if it doesn't look like a
+  // P&L line at all. Shared by parseTrades and parseCopierTrades.
+  function parsePnlLine(line) {
+    const m = line.match(RE_PNL);
+    if (m) {
+      const currency   = normalizeCurrency(m[2]);
+      const pnlRaw     = parseFloat(normalizeNumberStr(m[3]));
+      const isNegative = m[1] === '-' || m[3].startsWith('-');
+      return { currency, pnl: isNegative ? -Math.abs(pnlRaw) : Math.abs(pnlRaw) };
+    }
+    const mPlaceholder = line.match(RE_PNL_PLACEHOLDER);
+    if (mPlaceholder) {
+      return { currency: normalizeCurrency(mPlaceholder[1]), pnl: 0 };
+    }
+    return null;
+  }
+
   function parseTrades(raw) {
     const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const trades = [];
     const errors = [];
 
-    // Line 1: Sell0.01 XAUUSD @ 4029.07  OR  Buy0.01 XAUUSD @ 4029.07
-    const RE_START    = /^(Buy|Sell)([\d.]+)\s+(\S+)\s+@\s+([\d.]+)$/i;
-    // Line 2: any currency — e.g. $1.38, -€2.50, £-0.75, ¥120, R5.00
-    // Groups: [1]=leading minus, [2]=currency symbol, [3]=number (may start with minus)
-    const RE_PNL      = /^(-?)([^\d\s.,\-]+)(-?[\d.,]+)$/;
+    // Line 1: Sell0.01 XAUUSD @ 4029.07  OR  Buy0.01 XAUUSD @ 4,029.07
+    // Price allows thousands-separator commas (stripped out below before parsing).
+    const RE_START    = /^(Buy|Sell)([\d.]+)\s+(\S+)\s+@\s+([\d,.]+)$/i;
     // Line 3: 30/06/2026 07:21:33 | 4451015068
     const RE_DATETIME = /^(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s*\|\s*(\d+)$/;
 
@@ -1030,10 +1364,10 @@
         break;
       }
 
-      const m2 = lines[i + 1].match(RE_PNL);
+      const pnlResult = parsePnlLine(lines[i + 1]);
       const m3 = lines[i + 2].match(RE_DATETIME);
 
-      if (!m2 || !m3) {
+      if (!pnlResult || !m3) {
         errors.push(`Lines ${i+1}–${i+3}: found a trade start but could not parse the lines that follow it.`);
         i++; // resume scanning right after the failed start, not a fixed 3-line block
         continue;
@@ -1042,11 +1376,9 @@
       const direction  = m1[1];
       const volume     = parseFloat(m1[2]);
       const symbol     = m1[3];
-      const price      = parseFloat(m1[4]);
-      const currency   = m2[2];
-      const pnlRaw     = parseFloat(m2[3].replace(',', '.'));
-      const isNegative = m2[1] === '-' || m2[3].startsWith('-');
-      const pnl        = isNegative ? -Math.abs(pnlRaw) : Math.abs(pnlRaw);
+      const price      = parseFloat(normalizeNumberStr(m1[4]));
+      const currency   = pnlResult.currency;
+      const pnl        = pnlResult.pnl;
       const dateStr    = m3[1];
       const timeStr    = m3[2];
       const tradeId    = m3[3];
@@ -1267,39 +1599,52 @@
 
     // ── Per-pair breakdown table ──
     const cur = currentCurrency;
+    const showOrig = isSimActive();
     const pairs = [...new Set(trades.map(t => t.symbol))].sort();
 
     const pairStats = pairs.map(pair => {
-      const pt      = trades.filter(t => t.symbol === pair);
-      const pnls    = pt.map(getPnl);
-      const winPnls = pnls.filter(p => p > 0);
-      const lossPnls= pnls.filter(p => p < 0);
-      const totalPnl= pnls.reduce((s,v) => s+v, 0);
-      const grossW  = winPnls.reduce((s,v) => s+v, 0);
-      const grossL  = Math.abs(lossPnls.reduce((s,v) => s+v, 0));
+      const pt         = trades.filter(t => t.symbol === pair);
+      const winTrades  = pt.filter(t => getPnl(t) > 0);
+      const lossTrades = pt.filter(t => getPnl(t) < 0);
+      const grossW     = winTrades.reduce((s,t) => s + getPnl(t), 0);
+      const grossWOrig = winTrades.reduce((s,t) => s + t.pnl, 0);
+      const grossL     = Math.abs(lossTrades.reduce((s,t) => s + getPnl(t), 0));
+      const grossLOrig = Math.abs(lossTrades.reduce((s,t) => s + t.pnl, 0));
+      const maxWinTrade  = winTrades.length  ? winTrades.reduce((a,b) => getPnl(b) > getPnl(a) ? b : a)  : null;
+      const maxLossTrade = lossTrades.length ? lossTrades.reduce((a,b) => getPnl(b) < getPnl(a) ? b : a) : null;
       return {
         pair,
         count:    pt.length,
-        wins:     winPnls.length,
-        losses:   lossPnls.length,
-        winRate:  pt.length ? ((winPnls.length / pt.length) * 100).toFixed(1) : '0.0',
-        avgWin:   winPnls.length  ? grossW / winPnls.length   : null,
-        avgLoss:  lossPnls.length ? grossL / lossPnls.length  : null,
-        pf:       grossL > 0 ? (grossW / grossL).toFixed(2) : winPnls.length ? '∞' : '—',
-        maxWin:   winPnls.length  ? Math.max(...winPnls)      : null,
-        maxLoss:  lossPnls.length ? Math.max(...lossPnls.map(Math.abs)) : null,
-        totalPnl,
+        wins:     winTrades.length,
+        losses:   lossTrades.length,
+        winRate:  pt.length ? ((winTrades.length / pt.length) * 100).toFixed(1) : '0.0',
+        avgWin:      winTrades.length  ? grossW / winTrades.length      : null,
+        avgWinOrig:  winTrades.length  ? grossWOrig / winTrades.length  : null,
+        avgLoss:     lossTrades.length ? grossL / lossTrades.length     : null,
+        avgLossOrig: lossTrades.length ? grossLOrig / lossTrades.length : null,
+        pf:       grossL > 0     ? (grossW / grossL).toFixed(2)         : winTrades.length ? '∞' : '—',
+        pfOrig:   grossLOrig > 0 ? (grossWOrig / grossLOrig).toFixed(2) : winTrades.length ? '∞' : '—',
+        maxWin:      maxWinTrade  ? getPnl(maxWinTrade)          : null,
+        maxWinOrig:  maxWinTrade  ? maxWinTrade.pnl              : null,
+        maxLoss:     maxLossTrade ? Math.abs(getPnl(maxLossTrade)) : null,
+        maxLossOrig: maxLossTrade ? Math.abs(maxLossTrade.pnl)     : null,
+        totalPnl:     pt.reduce((s,t) => s + getPnl(t), 0),
+        totalPnlOrig: pt.reduce((s,t) => s + t.pnl, 0),
       };
     });
 
     // Totals footer row
-    const allPnls    = trades.map(getPnl);
-    const allWinPnls = allPnls.filter(p => p > 0);
-    const allLossPnls= allPnls.filter(p => p < 0);
-    const allGrossW  = allWinPnls.reduce((s,v) => s+v, 0);
-    const allGrossL  = Math.abs(allLossPnls.reduce((s,v) => s+v, 0));
+    const allWinTrades  = trades.filter(t => getPnl(t) > 0);
+    const allLossTrades = trades.filter(t => getPnl(t) < 0);
+    const allGrossW      = allWinTrades.reduce((s,t) => s + getPnl(t), 0);
+    const allGrossWOrig  = allWinTrades.reduce((s,t) => s + t.pnl, 0);
+    const allGrossL      = Math.abs(allLossTrades.reduce((s,t) => s + getPnl(t), 0));
+    const allGrossLOrig  = Math.abs(allLossTrades.reduce((s,t) => s + t.pnl, 0));
+    const allMaxWinTrade  = allWinTrades.length  ? allWinTrades.reduce((a,b) => getPnl(b) > getPnl(a) ? b : a)  : null;
+    const allMaxLossTrade = allLossTrades.length ? allLossTrades.reduce((a,b) => getPnl(b) < getPnl(a) ? b : a) : null;
+    const allTotalPnl     = trades.reduce((s,t) => s + getPnl(t), 0);
+    const allTotalPnlOrig = trades.reduce((s,t) => s + t.pnl, 0);
 
-    const fmt   = (v, pos) => v != null ? `${pos ? '+' : '-'}${cur}${Math.abs(v).toFixed(2)}` : '—';
     const fmtPnl= v => v >= 0 ? `<span class="pos">+${cur}${v.toFixed(2)}</span>` : `<span class="neg">-${cur}${Math.abs(v).toFixed(2)}</span>`;
 
     const tbody = document.getElementById('pairTableBody');
@@ -1310,26 +1655,26 @@
         <td class="pos">${s.wins}</td>
         <td class="neg">${s.losses}</td>
         <td>${s.winRate}%</td>
-        <td class="pos">${s.avgWin  != null ? `+${cur}${s.avgWin.toFixed(2)}`  : '—'}</td>
-        <td class="neg">${s.avgLoss != null ? `-${cur}${s.avgLoss.toFixed(2)}` : '—'}</td>
-        <td class="${parseFloat(s.pf) >= 1 ? 'pos' : 'neg'}">${s.pf}</td>
-        <td class="pos">${s.maxWin  != null ? `+${cur}${s.maxWin.toFixed(2)}`  : '—'}</td>
-        <td class="neg">${s.maxLoss != null ? `-${cur}${s.maxLoss.toFixed(2)}` : '—'}</td>
-        <td>${fmtPnl(s.totalPnl)}</td>
+        <td class="pos">${s.avgWin  != null ? `+${cur}${s.avgWin.toFixed(2)}`  : '—'}${showOrig && s.avgWinOrig  != null ? origNote(`+${cur}${s.avgWinOrig.toFixed(2)}`)  : ''}</td>
+        <td class="neg">${s.avgLoss != null ? `-${cur}${s.avgLoss.toFixed(2)}` : '—'}${showOrig && s.avgLossOrig != null ? origNote(`-${cur}${s.avgLossOrig.toFixed(2)}`) : ''}</td>
+        <td class="${parseFloat(s.pf) >= 1 ? 'pos' : 'neg'}">${s.pf}${showOrig ? origNote(s.pfOrig) : ''}</td>
+        <td class="pos">${s.maxWin  != null ? `+${cur}${s.maxWin.toFixed(2)}`  : '—'}${showOrig && s.maxWinOrig  != null ? origNote(`+${cur}${s.maxWinOrig.toFixed(2)}`)  : ''}</td>
+        <td class="neg">${s.maxLoss != null ? `-${cur}${s.maxLoss.toFixed(2)}` : '—'}${showOrig && s.maxLossOrig != null ? origNote(`-${cur}${s.maxLossOrig.toFixed(2)}`) : ''}</td>
+        <td>${fmtPnl(s.totalPnl)}${showOrig ? origNote(fmtPnlPlain(s.totalPnlOrig)) : ''}</td>
       </tr>`).join('') +
       // Totals row
       `<tr style="border-top:2px solid var(--border);font-weight:700;background:var(--surface2);">
         <td>All Pairs</td>
         <td>${trades.length}</td>
-        <td class="pos">${allWinPnls.length}</td>
-        <td class="neg">${allLossPnls.length}</td>
-        <td>${trades.length ? ((allWinPnls.length / trades.length)*100).toFixed(1) : '0.0'}%</td>
-        <td class="pos">${allWinPnls.length ? `+${cur}${(allGrossW/allWinPnls.length).toFixed(2)}` : '—'}</td>
-        <td class="neg">${allLossPnls.length ? `-${cur}${(allGrossL/allLossPnls.length).toFixed(2)}` : '—'}</td>
-        <td class="${allGrossL > 0 && (allGrossW/allGrossL) >= 1 ? 'pos' : 'neg'}">${allGrossL > 0 ? (allGrossW/allGrossL).toFixed(2) : allWinPnls.length ? '∞' : '—'}</td>
-        <td class="pos">${allWinPnls.length ? `+${cur}${Math.max(...allWinPnls).toFixed(2)}` : '—'}</td>
-        <td class="neg">${allLossPnls.length ? `-${cur}${Math.max(...allLossPnls.map(Math.abs)).toFixed(2)}` : '—'}</td>
-        <td>${fmtPnl(allPnls.reduce((s,v)=>s+v,0))}</td>
+        <td class="pos">${allWinTrades.length}</td>
+        <td class="neg">${allLossTrades.length}</td>
+        <td>${trades.length ? ((allWinTrades.length / trades.length)*100).toFixed(1) : '0.0'}%</td>
+        <td class="pos">${allWinTrades.length ? `+${cur}${(allGrossW/allWinTrades.length).toFixed(2)}` : '—'}${showOrig && allWinTrades.length ? origNote(`+${cur}${(allGrossWOrig/allWinTrades.length).toFixed(2)}`) : ''}</td>
+        <td class="neg">${allLossTrades.length ? `-${cur}${(allGrossL/allLossTrades.length).toFixed(2)}` : '—'}${showOrig && allLossTrades.length ? origNote(`-${cur}${(allGrossLOrig/allLossTrades.length).toFixed(2)}`) : ''}</td>
+        <td class="${allGrossL > 0 && (allGrossW/allGrossL) >= 1 ? 'pos' : 'neg'}">${allGrossL > 0 ? (allGrossW/allGrossL).toFixed(2) : allWinTrades.length ? '∞' : '—'}${showOrig ? origNote(allGrossLOrig > 0 ? (allGrossWOrig/allGrossLOrig).toFixed(2) : allWinTrades.length ? '∞' : '—') : ''}</td>
+        <td class="pos">${allMaxWinTrade ? `+${cur}${getPnl(allMaxWinTrade).toFixed(2)}` : '—'}${showOrig && allMaxWinTrade ? origNote(`+${cur}${allMaxWinTrade.pnl.toFixed(2)}`) : ''}</td>
+        <td class="neg">${allMaxLossTrade ? `-${cur}${Math.abs(getPnl(allMaxLossTrade)).toFixed(2)}` : '—'}${showOrig && allMaxLossTrade ? origNote(`-${cur}${Math.abs(allMaxLossTrade.pnl).toFixed(2)}`) : ''}</td>
+        <td>${fmtPnl(allTotalPnl)}${showOrig ? origNote(fmtPnlPlain(allTotalPnlOrig)) : ''}</td>
       </tr>`;
   }
 
@@ -1356,9 +1701,13 @@
         const gTrades = g.trades;
         const first = gTrades[0];
         const last  = gTrades[gTrades.length - 1];
-        const pnls  = gTrades.map(getPnl);
-        const gains = pnls.filter(p => p > 0).reduce((s, v) => s + v, 0);
-        const losses = Math.abs(pnls.filter(p => p < 0).reduce((s, v) => s + v, 0));
+        // Win/loss classification is driven by the simulated sign — a sim never
+        // flips a trade's sign (its lot-scaling factor is always positive), so
+        // the same trades make up "gains" whether measured sim or original.
+        const gains      = gTrades.reduce((s,t) => s + (getPnl(t) > 0 ? getPnl(t) : 0), 0);
+        const gainsOrig  = gTrades.reduce((s,t) => s + (getPnl(t) > 0 ? t.pnl : 0), 0);
+        const losses     = Math.abs(gTrades.reduce((s,t) => s + (getPnl(t) < 0 ? getPnl(t) : 0), 0));
+        const lossesOrig = Math.abs(gTrades.reduce((s,t) => s + (getPnl(t) < 0 ? t.pnl : 0), 0));
         return {
           trades:    gTrades,
           start:     first.dt,
@@ -1367,9 +1716,13 @@
           endLabel:   `${last.dateStr} ${last.timeStr}`,
           count:     gTrades.length,
           gains,
+          gainsOrig,
           losses,
-          net:       gains - losses,
-          maxDrawdown: gains + losses,
+          lossesOrig,
+          net:            gains - losses,
+          netOrig:        gainsOrig - lossesOrig,
+          maxDrawdown:     gains + losses,
+          maxDrawdownOrig: gainsOrig + lossesOrig,
         };
       });
   }
@@ -1384,6 +1737,7 @@
     });
 
     const cur = currentCurrency;
+    const showOrig = isSimActive();
     const tbody = document.getElementById('groupsTableBody');
 
     if (groups.length === 0) {
@@ -1391,16 +1745,16 @@
     } else {
       tbody.innerHTML = groups.map(g => {
         const netClass = g.net >= 0 ? 'pos' : 'neg';
-        const netSign  = g.net >= 0 ? '+' : '';
+        const netSign  = g.net >= 0 ? '+' : '-';
         return `
           <tr>
             <td>${g.startLabel}</td>
             <td>${g.endLabel}</td>
             <td>${g.count}</td>
-            <td class="pos">${g.gains > 0 ? `+${cur}${g.gains.toFixed(2)}` : `${cur}0.00`}</td>
-            <td class="neg">${g.losses > 0 ? `-${cur}${g.losses.toFixed(2)}` : `${cur}0.00`}</td>
-            <td class="${netClass}" style="font-weight:600">${netSign}${cur}${Math.abs(g.net).toFixed(2)}</td>
-            <td>${cur}${g.maxDrawdown.toFixed(2)}</td>
+            <td class="pos">${g.gains > 0 ? `+${cur}${g.gains.toFixed(2)}` : `${cur}0.00`}${showOrig ? origNote(g.gainsOrig > 0 ? `+${cur}${g.gainsOrig.toFixed(2)}` : `${cur}0.00`) : ''}</td>
+            <td class="neg">${g.losses > 0 ? `-${cur}${g.losses.toFixed(2)}` : `${cur}0.00`}${showOrig ? origNote(g.lossesOrig > 0 ? `-${cur}${g.lossesOrig.toFixed(2)}` : `${cur}0.00`) : ''}</td>
+            <td class="${netClass}" style="font-weight:600">${netSign}${cur}${Math.abs(g.net).toFixed(2)}${showOrig ? origNote(fmtPnlPlain(g.netOrig)) : ''}</td>
+            <td>${cur}${g.maxDrawdown.toFixed(2)}${showOrig ? origNote(`${cur}${g.maxDrawdownOrig.toFixed(2)}`) : ''}</td>
           </tr>`;
       }).join('');
     }
@@ -1439,10 +1793,17 @@
 
     return [...byDay.entries()].map(([dateStr, dayTrades]) => {
       const pnls      = dayTrades.map(getPnl);
-      const wins      = pnls.filter(p => p > 0);
-      const losses    = pnls.filter(p => p < 0);
-      const grossWin  = wins.reduce((s, v) => s + v, 0);
-      const grossLoss = Math.abs(losses.reduce((s, v) => s + v, 0));
+      const origPnls  = dayTrades.map(t => t.pnl);
+      // Classification (win/loss) follows the simulated sign throughout — a
+      // sim never flips a trade's sign, so this pairs sim/original consistently.
+      const wins       = pnls.filter(p => p > 0);
+      const losses     = pnls.filter(p => p < 0);
+      const winsOrig   = origPnls.filter((_, i) => pnls[i] > 0);
+      const lossesOrig = origPnls.filter((_, i) => pnls[i] < 0);
+      const grossWin      = wins.reduce((s, v) => s + v, 0);
+      const grossWinOrig  = winsOrig.reduce((s, v) => s + v, 0);
+      const grossLoss     = Math.abs(losses.reduce((s, v) => s + v, 0));
+      const grossLossOrig = Math.abs(lossesOrig.reduce((s, v) => s + v, 0));
 
       let cum = 0, peak = 0, maxDrawdown = 0;
       for (const p of pnls) {
@@ -1450,6 +1811,13 @@
         if (cum > peak) peak = cum;
         const dd = peak - cum;
         if (dd > maxDrawdown) maxDrawdown = dd;
+      }
+      let cumO = 0, peakO = 0, maxDrawdownOrig = 0;
+      for (const p of origPnls) {
+        cumO += p;
+        if (cumO > peakO) peakO = cumO;
+        const dd = peakO - cumO;
+        if (dd > maxDrawdownOrig) maxDrawdownOrig = dd;
       }
 
       return {
@@ -1460,21 +1828,27 @@
         losses:      losses.length,
         winRate:     dayTrades.length ? (wins.length / dayTrades.length) * 100 : 0,
         grossWin,
+        grossWinOrig,
         grossLoss,
-        net:         grossWin - grossLoss,
-        profitFactor: grossLoss > 0 ? grossWin / grossLoss : (wins.length ? Infinity : 0),
+        grossLossOrig,
+        net:             grossWin - grossLoss,
+        netOrig:         grossWinOrig - grossLossOrig,
+        profitFactor:     grossLoss > 0     ? grossWin / grossLoss         : (wins.length ? Infinity : 0),
+        profitFactorOrig: grossLossOrig > 0 ? grossWinOrig / grossLossOrig : (winsOrig.length ? Infinity : 0),
         maxDrawdown,
+        maxDrawdownOrig,
       };
     });
   }
 
   // Peak-to-trough decline in cumulative P&L across the whole chronological
   // trade sequence (not reset per day) — the account-level max drawdown.
-  function computeOverallMaxDrawdown(trades) {
+  // valueFn selects sim (default) vs. original P&L per trade.
+  function computeOverallMaxDrawdown(trades, valueFn = getPnl) {
     const sorted = [...trades].sort((a, b) => a.dt - b.dt);
     let cum = 0, peak = 0, maxDrawdown = 0;
     for (const t of sorted) {
-      cum += getPnl(t);
+      cum += valueFn(t);
       if (cum > peak) peak = cum;
       const dd = peak - cum;
       if (dd > maxDrawdown) maxDrawdown = dd;
@@ -1485,6 +1859,7 @@
   function renderDaily(trades) {
     const days = computeDailyStats(trades);
     const cur  = currentCurrency;
+    const showOrig = isSimActive();
 
     days.sort((a, b) => {
       let av = a[dailySortKey], bv = b[dailySortKey];
@@ -1498,8 +1873,9 @@
     } else {
       tbody.innerHTML = days.map(d => {
         const netClass = d.net >= 0 ? 'pos' : 'neg';
-        const netSign  = d.net >= 0 ? '+' : '';
+        const netSign  = d.net >= 0 ? '+' : '-';
         const pf = d.profitFactor === Infinity ? '∞' : d.profitFactor > 0 ? d.profitFactor.toFixed(2) : '—';
+        const pfOrig = d.profitFactorOrig === Infinity ? '∞' : d.profitFactorOrig > 0 ? d.profitFactorOrig.toFixed(2) : '—';
         return `
           <tr>
             <td>${d.dateStr}</td>
@@ -1507,11 +1883,11 @@
             <td class="pos">${d.wins}</td>
             <td class="neg">${d.losses}</td>
             <td>${d.winRate.toFixed(1)}%</td>
-            <td class="pos">${d.grossWin > 0 ? `+${cur}${d.grossWin.toFixed(2)}` : `${cur}0.00`}</td>
-            <td class="neg">${d.grossLoss > 0 ? `-${cur}${d.grossLoss.toFixed(2)}` : `${cur}0.00`}</td>
-            <td class="${netClass}" style="font-weight:600">${netSign}${cur}${Math.abs(d.net).toFixed(2)}</td>
-            <td class="${pf !== '—' && parseFloat(pf) >= 1 ? 'pos' : 'neg'}">${pf}</td>
-            <td>${cur}${d.maxDrawdown.toFixed(2)}</td>
+            <td class="pos">${d.grossWin > 0 ? `+${cur}${d.grossWin.toFixed(2)}` : `${cur}0.00`}${showOrig ? origNote(d.grossWinOrig > 0 ? `+${cur}${d.grossWinOrig.toFixed(2)}` : `${cur}0.00`) : ''}</td>
+            <td class="neg">${d.grossLoss > 0 ? `-${cur}${d.grossLoss.toFixed(2)}` : `${cur}0.00`}${showOrig ? origNote(d.grossLossOrig > 0 ? `-${cur}${d.grossLossOrig.toFixed(2)}` : `${cur}0.00`) : ''}</td>
+            <td class="${netClass}" style="font-weight:600">${netSign}${cur}${Math.abs(d.net).toFixed(2)}${showOrig ? origNote(fmtPnlPlain(d.netOrig)) : ''}</td>
+            <td class="${pf !== '—' && parseFloat(pf) >= 1 ? 'pos' : 'neg'}">${pf}${showOrig ? origNote(pfOrig) : ''}</td>
+            <td>${cur}${d.maxDrawdown.toFixed(2)}${showOrig ? origNote(`${cur}${d.maxDrawdownOrig.toFixed(2)}`) : ''}</td>
           </tr>`;
       }).join('');
     }
@@ -1526,12 +1902,16 @@
     const dayWinRate = totalDays ? (profitDays.length / totalDays) * 100 : 0;
     const bestDay    = totalDays ? days.reduce((a, b) => b.net > a.net ? b : a) : null;
     const worstDay   = totalDays ? days.reduce((a, b) => b.net < a.net ? b : a) : null;
-    const avgDaily   = totalDays ? days.reduce((s, d) => s + d.net, 0) / totalDays : 0;
-    const overallDD  = computeOverallMaxDrawdown(trades);
+    const avgDaily     = totalDays ? days.reduce((s, d) => s + d.net, 0) / totalDays : 0;
+    const avgDailyOrig = totalDays ? days.reduce((s, d) => s + d.netOrig, 0) / totalDays : 0;
+    const overallDD     = computeOverallMaxDrawdown(trades);
+    const overallDDOrig = computeOverallMaxDrawdown(trades, t => t.pnl);
 
-    const setCard = (id, text, cls) => {
+    // innerHTML (not textContent) so the grey original-value annotation can render as markup —
+    // every value fed in here is a locally-computed number or a regex-validated dateStr, never raw user text.
+    const setCard = (id, html, cls) => {
       const el = document.getElementById(id);
-      el.textContent = text;
+      el.innerHTML = html;
       el.className = `card-value${cls ? ' ' + cls : ''}`;
     };
 
@@ -1539,10 +1919,10 @@
     setCard('dailyProfitDays', profitDays.length, 'pos');
     setCard('dailyLossDays',   lossDays.length, 'neg');
     setCard('dailyWinRate',    `${dayWinRate.toFixed(1)}%`, 'neutral');
-    setCard('dailyBestDay',    bestDay  ? `+${cur}${bestDay.net.toFixed(2)} (${bestDay.dateStr})`  : '—', 'pos');
-    setCard('dailyWorstDay',   worstDay ? `${worstDay.net < 0 ? '-' : ''}${cur}${Math.abs(worstDay.net).toFixed(2)} (${worstDay.dateStr})` : '—', 'neg');
-    setCard('dailyAvgPnl',     totalDays ? `${avgDaily >= 0 ? '+' : '-'}${cur}${Math.abs(avgDaily).toFixed(2)}` : '—', avgDaily >= 0 ? 'pos' : 'neg');
-    setCard('dailyMaxDD',      `${cur}${overallDD.toFixed(2)}`, 'neg');
+    setCard('dailyBestDay',    bestDay  ? `+${cur}${bestDay.net.toFixed(2)}${showOrig ? origNote(fmtPnlPlain(bestDay.netOrig)) : ''} (${bestDay.dateStr})`  : '—', 'pos');
+    setCard('dailyWorstDay',   worstDay ? `${worstDay.net < 0 ? '-' : ''}${cur}${Math.abs(worstDay.net).toFixed(2)}${showOrig ? origNote(fmtPnlPlain(worstDay.netOrig)) : ''} (${worstDay.dateStr})` : '—', 'neg');
+    setCard('dailyAvgPnl',     totalDays ? `${avgDaily >= 0 ? '+' : '-'}${cur}${Math.abs(avgDaily).toFixed(2)}${showOrig ? origNote(fmtPnlPlain(avgDailyOrig)) : ''}` : '—', avgDaily >= 0 ? 'pos' : 'neg');
+    setCard('dailyMaxDD',      `${cur}${overallDD.toFixed(2)}${showOrig ? origNote(`${cur}${overallDDOrig.toFixed(2)}`) : ''}`, 'neg');
   }
 
   function sortDailyBy(key) {
@@ -1672,6 +2052,94 @@
     datePeriodMode   = null;
     datePeriodOffset = 0;
     updateDatePeriodUI();
+  }
+
+  // ── Copier Report date range ──────────────────────────────────
+  // Same D/W/M/Y fixed-period mechanics as above (reusing computePeriodRange/
+  // formatPeriodLabel, which are pure), but against its own inputs/state and
+  // driving applyCopierDateFilter() instead of the shared-report applyFilters().
+  let copierDatePeriodMode   = null;
+  let copierDatePeriodOffset = 0;
+
+  function shiftCopierDate(inputId, days) {
+    const el = document.getElementById(inputId);
+    if (!el.value) return;
+    const dt = new Date(el.value + 'T00:00:00');
+    dt.setDate(dt.getDate() + days);
+    el.value = toInputDate(dt);
+    applyCopierDateFilter();
+  }
+
+  function setCopierDatePreset(preset) {
+    copierDatePeriodMode   = preset;
+    copierDatePeriodOffset = 0;
+    applyCopierDatePeriod();
+  }
+
+  function shiftCopierDatePeriod(delta) {
+    if (!copierDatePeriodMode) return;
+    copierDatePeriodOffset += delta;
+    applyCopierDatePeriod();
+  }
+
+  function applyCopierDatePeriod() {
+    const { from, to } = computePeriodRange(copierDatePeriodMode, copierDatePeriodOffset);
+    document.getElementById('copierDateFrom').value = toInputDate(from);
+    document.getElementById('copierDateTo').value   = toInputDate(to);
+    updateCopierDatePeriodUI();
+    applyCopierDateFilter();
+  }
+
+  function updateCopierDatePeriodUI() {
+    const active = !!copierDatePeriodMode;
+    document.getElementById('copierPresetRow').style.display = active ? 'none' : 'flex';
+    document.getElementById('copierPeriodNav').style.display  = active ? 'flex' : 'none';
+
+    document.getElementById('copierDateFrom').disabled = active;
+    document.getElementById('copierDateTo').disabled   = active;
+    document.getElementById('copierDateFromShiftBtns').querySelectorAll('button').forEach(b => b.disabled = active);
+    document.getElementById('copierDateToShiftBtns').querySelectorAll('button').forEach(b => b.disabled = active);
+
+    if (active) {
+      const { from, to } = computePeriodRange(copierDatePeriodMode, copierDatePeriodOffset);
+      document.getElementById('copierPeriodLabel').textContent = formatPeriodLabel(copierDatePeriodMode, from, to);
+    }
+  }
+
+  // ✕ — drop the fixed period and hand date selection back to the from/to inputs.
+  function exitCopierDatePeriodMode() {
+    copierDatePeriodMode   = null;
+    copierDatePeriodOffset = 0;
+    updateCopierDatePeriodUI();
+  }
+
+  // Recomputes copierFilteredTrades from the current copierDateFrom/copierDateTo
+  // inputs and re-renders the provider table — the one place copierFilteredTrades
+  // is written, mirroring how applyFilters() is the one place filteredTrades is written.
+  function applyCopierDateFilter() {
+    const fromVal = document.getElementById('copierDateFrom').value;
+    const toVal   = document.getElementById('copierDateTo').value;
+    const from = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+    const to   = toVal   ? new Date(toVal   + 'T23:59:59') : null;
+
+    copierFilteredTrades = copierTrades.filter(t => {
+      if (from && t.dt < from) return false;
+      if (to   && t.dt > to)   return false;
+      return true;
+    });
+
+    renderProviderTable();
+  }
+
+  // Resets the copier date range back to the full extent of the parsed data.
+  function resetCopierDateFilter() {
+    exitCopierDatePeriodMode();
+    const sorted = [...copierTrades].sort((a,b) => a.dt - b.dt);
+    if (sorted.length) {
+      document.getElementById('copierDateFrom').value = toInputDate(sorted[0].dt);
+      document.getElementById('copierDateTo').value   = toInputDate(sorted[sorted.length-1].dt);
+    }
+    applyCopierDateFilter();
   }
 
   function toInputDate(dt) {
@@ -1899,6 +2367,255 @@
     };
     reader.readAsArrayBuffer(file);
   }
+
+  // ── Copier Report ──────────────────────────────────────────────
+  // Same 3-line trade block as parseTrades, but each is preceded by a line
+  // naming the provider it was copied from:
+  //   <provider name>
+  //   USD 0.07
+  //   Buy0.01 XAUUSD @ 4329.71
+  //   14/08/2026 06:31:25 | 90623945
+  // We scan forward for the action line (unambiguous), then look one line
+  // back for the P&L and two lines back for the provider name, mirroring
+  // parseTrades' "scan for an anchor" approach.
+  function parseCopierTrades(raw) {
+    const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const trades = [];
+    const errors = [];
+
+    const RE_START    = /^(Buy|Sell)([\d.]+)\s+(\S+)\s+@\s+([\d,.]+)$/i;
+    const RE_DATETIME = /^(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2})\s*\|\s*(\d+)$/;
+
+    let i = 0;
+    while (i < lines.length) {
+      const m1 = lines[i].match(RE_START);
+      if (!m1) { i++; continue; }
+
+      if (i < 2 || i + 1 >= lines.length) {
+        errors.push(`Line ${i+1}: trade "${lines[i]}" found but its provider/P&L/date lines are missing.`);
+        i++;
+        continue;
+      }
+
+      const providerLine = lines[i - 2];
+      const pnlResult = parsePnlLine(lines[i - 1]);
+      const m3 = lines[i + 1].match(RE_DATETIME);
+
+      if (!pnlResult || !m3) {
+        errors.push(`Lines ${i-1}–${i+2}: found a trade action line but could not parse its provider/P&L/date lines.`);
+        i++;
+        continue;
+      }
+
+      const direction  = m1[1];
+      const volume     = parseFloat(m1[2]);
+      const symbol     = m1[3];
+      const price      = parseFloat(normalizeNumberStr(m1[4]));
+      const currency   = pnlResult.currency;
+      const pnl        = pnlResult.pnl;
+      const dateStr    = m3[1];
+      const timeStr    = m3[2];
+      const tradeId    = m3[3];
+
+      const [dd, mm, yyyy] = dateStr.split('/');
+      const dt = new Date(`${yyyy}-${mm}-${dd}T${timeStr}`);
+
+      trades.push({ provider: providerLine, direction, volume, symbol, price, pnl, currency, dateStr, timeStr, tradeId, dt });
+      i += 2; // resume scanning right after this block's date/time line
+    }
+
+    const deduped = dedupeByTradeId(trades);
+    if (deduped.duplicates > 0) {
+      errors.push(`Removed ${deduped.duplicates} duplicate trade${deduped.duplicates !== 1 ? 's' : ''} (matching Trade ID).`);
+    }
+
+    const currencies = [...new Set(deduped.trades.map(t => t.currency))];
+    if (currencies.length > 1) {
+      errors.push(
+        `CURRENCY MISMATCH — found ${currencies.length} different currencies: ${currencies.map(currencyLabel).join(', ')}. ` +
+        `All trades must use the same currency. Please check your data.`
+      );
+    }
+
+    return { trades: deduped.trades, errors, currencies };
+  }
+
+  function setCopierParseStatus(type, text) {
+    const tag = document.getElementById('copierParseStatusTag');
+    tag.textContent = text || '';
+    tag.className = 'parse-status-tag' + (type ? ' ' + type : '');
+    tag.style.display = text ? 'inline-block' : 'none';
+  }
+
+  function clearCopierInput() {
+    document.getElementById('copierRawInput').value = '';
+    document.getElementById('copierErrorBanner').style.display = 'none';
+    setCopierParseStatus(null, '');
+  }
+
+  function parseCopierAndRender() {
+    const raw = document.getElementById('copierRawInput').value;
+    if (!raw.trim()) return;
+
+    const { trades, errors, currencies } = parseCopierTrades(raw);
+    copierTrades = trades;
+
+    const banner = document.getElementById('copierErrorBanner');
+    if (errors.length) {
+      banner.innerHTML = errors.map(e =>
+        e.startsWith('CURRENCY') ? `<strong>⚠ ${e}</strong>` : e
+      ).join('<br>');
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+
+    if (currencies && currencies.length > 1) {
+      setCopierParseStatus('warning', '⚠ Currency mismatch — see warnings below');
+      return;
+    }
+
+    if (trades.length === 0) {
+      setCopierParseStatus('warning', '⚠ No valid trades found — see warnings below');
+      return;
+    }
+
+    setCopierParseStatus(
+      errors.length ? 'warning' : 'success',
+      errors.length
+        ? `⚠ ${trades.length} trade${trades.length !== 1 ? 's' : ''} parsed, ${errors.length} warning${errors.length !== 1 ? 's' : ''} — see below`
+        : `✓ ${trades.length} trade${trades.length !== 1 ? 's' : ''} parsed successfully`
+    );
+
+    copierCurrency = (currencies && currencies[0]) || '$';
+
+    // Default the copier date range to the full extent of what was just
+    // parsed, then let applyCopierDateFilter derive copierFilteredTrades and
+    // render the provider table from it (mirrors parseAndRender's date setup).
+    exitCopierDatePeriodMode();
+    const sorted = [...trades].sort((a,b) => a.dt - b.dt);
+    document.getElementById('copierDateFrom').value = toInputDate(sorted[0].dt);
+    document.getElementById('copierDateTo').value   = toInputDate(sorted[sorted.length-1].dt);
+
+    applyCopierDateFilter();
+    showPage('copier-report');
+  }
+
+  // Raw (non-simulated) performance per provider — this table reports actual
+  // copier history, so it always reads t.pnl directly rather than getPnl().
+  function computeProviderStats(trades) {
+    const providers = [...new Set(trades.map(t => t.provider))].sort();
+    return providers.map(provider => {
+      const pt         = trades.filter(t => t.provider === provider);
+      const winTrades  = pt.filter(t => t.pnl > 0);
+      const lossTrades = pt.filter(t => t.pnl < 0);
+      const grossW     = winTrades.reduce((s,t) => s + t.pnl, 0);
+      const grossL     = Math.abs(lossTrades.reduce((s,t) => s + t.pnl, 0));
+      const totalPnl   = pt.reduce((s,t) => s + t.pnl, 0);
+      return {
+        provider,
+        count:   pt.length,
+        wins:    winTrades.length,
+        losses:  lossTrades.length,
+        winRate: pt.length ? ((winTrades.length / pt.length) * 100).toFixed(1) : '0.0',
+        pf:      grossL > 0 ? (grossW / grossL).toFixed(2) : winTrades.length ? '∞' : '—',
+        totalPnl,
+      };
+    }).sort((a, b) => b.totalPnl - a.totalPnl); // best performer first
+  }
+
+  function renderProviderTable() {
+    currentProviderStats = computeProviderStats(copierFilteredTrades);
+    const cur = copierCurrency;
+    const tbody = document.getElementById('providerTableBody');
+
+    if (currentProviderStats.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted);">No providers found.</td></tr>`;
+      return;
+    }
+
+    // Totals row across every provider currently in the table — computed
+    // directly from copierFilteredTrades (not summed from currentProviderStats)
+    // so it can never drift from what the individual rows show. Clicking it
+    // opens the same combined view as the "Overall Report" button.
+    const allWinTrades  = copierFilteredTrades.filter(t => t.pnl > 0);
+    const allLossTrades = copierFilteredTrades.filter(t => t.pnl < 0);
+    const allGrossW      = allWinTrades.reduce((s,t) => s + t.pnl, 0);
+    const allGrossL      = Math.abs(allLossTrades.reduce((s,t) => s + t.pnl, 0));
+    const allTotalPnl    = copierFilteredTrades.reduce((s,t) => s + t.pnl, 0);
+    const allCount       = copierFilteredTrades.length;
+    const allWinRate     = allCount ? ((allWinTrades.length / allCount) * 100).toFixed(1) : '0.0';
+    const allPf          = allGrossL > 0 ? (allGrossW / allGrossL).toFixed(2) : allWinTrades.length ? '∞' : '—';
+
+    const totalsRow = `
+      <tr onclick="selectAllProviders()" style="cursor:pointer;font-weight:700;background:var(--surface2);border-bottom:2px solid var(--border);">
+        <td>All Providers</td>
+        <td>${allCount}</td>
+        <td class="pos">${allWinTrades.length}</td>
+        <td class="neg">${allLossTrades.length}</td>
+        <td>${allWinRate}%</td>
+        <td class="${allGrossL > 0 && (allGrossW / allGrossL) >= 1 ? 'pos' : 'neg'}">${allPf}</td>
+        <td class="${allTotalPnl >= 0 ? 'pos' : 'neg'}">${allTotalPnl >= 0 ? '+' : '-'}${cur}${Math.abs(allTotalPnl).toFixed(2)}</td>
+        <td style="color:var(--accent);">View report →</td>
+      </tr>`;
+
+    const providerRows = currentProviderStats.map((s, idx) => `
+      <tr class="provider-row" onclick="selectProviderByIndex(${idx})" style="cursor:pointer">
+        <td><strong>${s.provider}</strong></td>
+        <td>${s.count}</td>
+        <td class="pos">${s.wins}</td>
+        <td class="neg">${s.losses}</td>
+        <td>${s.winRate}%</td>
+        <td class="${parseFloat(s.pf) >= 1 ? 'pos' : 'neg'}">${s.pf}</td>
+        <td class="${s.totalPnl >= 0 ? 'pos' : 'neg'}" style="font-weight:600">${s.totalPnl >= 0 ? '+' : '-'}${cur}${Math.abs(s.totalPnl).toFixed(2)}</td>
+        <td style="color:var(--accent);">View report →</td>
+      </tr>`).join('');
+
+    tbody.innerHTML = totalsRow + providerRows;
+  }
+
+  // Hands a set of copier trades to the same shared report widgets
+  // (controls/summary/tabs/tables) the simulation page uses, so both the
+  // per-provider and the combined "all providers" views get the full
+  // trading report for free.
+  function loadCopierReportTrades(trades, label) {
+    selectedProvider = label;
+    allTrades = trades;
+    currentCurrency = copierCurrency;
+
+    exitDatePeriodMode();
+    const symbols = [...new Set(allTrades.map(t => t.symbol))].sort();
+    const symSel = document.getElementById('symbolFilter');
+    symSel.innerHTML = '<option value="">All symbols</option>' +
+      symbols.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    const sorted = [...allTrades].sort((a,b) => a.dt - b.dt);
+    document.getElementById('dateFrom').value = toInputDate(sorted[0].dt);
+    document.getElementById('dateTo').value   = toInputDate(sorted[sorted.length-1].dt);
+    document.getElementById('dirFilter').value = '';
+    document.getElementById('lotOp').value     = '';
+    document.getElementById('lotVal').value    = '';
+
+    document.getElementById('selectedProviderName').textContent = label;
+
+    showPage('copier-detail');
+    showUI();
+    applyFilters();
+  }
+
+  function selectProviderByIndex(idx) {
+    const stat = currentProviderStats[idx];
+    if (!stat) return;
+    loadCopierReportTrades(copierFilteredTrades.filter(t => t.provider === stat.provider), stat.provider);
+  }
+
+  // The "Overall Report" button — every trade within the selected copier date
+  // range, across every provider, run through the report widgets as one view.
+  function selectAllProviders() {
+    loadCopierReportTrades(copierFilteredTrades.slice(), 'All Providers');
+  }
+
+  showPage('landing');
 </script>
 </body>
 </html>
