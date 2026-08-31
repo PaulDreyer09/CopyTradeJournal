@@ -501,6 +501,23 @@
   .provider-banner strong { font-weight: 700; }
 
   .provider-row:hover td { background: var(--surface2); }
+
+  /* ── Account growth chart ── */
+  .growth-box { position: relative; }
+  .growth-tooltip {
+    display: none;
+    position: absolute;
+    pointer-events: none;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    z-index: 5;
+  }
 </style>
 </head>
 <body>
@@ -534,13 +551,22 @@
     <label>Raw Trade Data</label>
     <textarea id="rawInput" placeholder="Sell0.01 XAUUSD @ 4029.07&#10;$1.38&#10;30/06/2026 07:21:33 | 4451015068&#10;&#10;Paste multiple entries — each trade is 3 lines."></textarea>
     <div class="parse-status-tag" id="parseStatusTag"></div>
-    <div class="btn-row">
+    <div class="btn-row" style="align-items:flex-end;">
       <button class="btn-primary" onclick="parseAndRender()">Parse Trades</button>
       <button class="btn-ghost" onclick="clearAll()">Clear</button>
       <label class="import-label" for="xlsxImport" title="Import a previously exported Trade Journal .xlsx file">
         ⬆ Import Excel
       </label>
       <input type="file" id="xlsxImport" accept=".xlsx,.xls" onchange="importFromExcel(event)" />
+      <div class="spacer"></div>
+      <div class="ctrl-group">
+        <label>Account End Balance</label>
+        <input type="number" id="simEndBalance" step="0.01" placeholder="e.g. 5230.50"
+               oninput="applyFilters()"
+               style="width:150px;background:var(--bg);border:1px solid var(--border);
+                      border-radius:var(--radius);color:var(--text);font-size:13px;
+                      padding:6px 10px;outline:none;" />
+      </div>
     </div>
   </div>
 </div>
@@ -557,9 +583,17 @@
     <label>Raw Copier Trade Data</label>
     <textarea id="copierRawInput" placeholder="🏆CopyADK Gold 10k Challenge&#10;USD 0.07&#10;Buy0.01 XAUUSD @ 4329.71&#10;14/08/2026 06:31:25 | 90623945&#10;&#10;Paste multiple entries — each trade is 4 lines: provider, P&amp;L, action, date/time | ID."></textarea>
     <div class="parse-status-tag" id="copierParseStatusTag"></div>
-    <div class="btn-row">
+    <div class="btn-row" style="align-items:flex-end;">
       <button class="btn-primary" onclick="parseCopierAndRender()">Parse Trades</button>
       <button class="btn-ghost" onclick="clearCopierInput()">Clear</button>
+      <div class="spacer"></div>
+      <div class="ctrl-group">
+        <label>Account End Balance</label>
+        <input type="number" id="copierEndBalance" step="0.01" placeholder="e.g. 5230.50"
+               style="width:150px;background:var(--bg);border:1px solid var(--border);
+                      border-radius:var(--radius);color:var(--text);font-size:13px;
+                      padding:6px 10px;outline:none;" />
+      </div>
     </div>
   </div>
 </div>
@@ -945,6 +979,36 @@
     </div>
   </div>
 
+  <!-- Account growth: cumulative balance chart, anchored to the account end
+       balance entered on the trade input page (Simulation/Copier) -->
+  <div class="table-wrap" id="growthWrap" style="display:none; margin-bottom:16px; padding:16px; overflow:visible;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:var(--muted);font-weight:600;">Account Growth</div>
+      <div style="font-size:12px;color:var(--muted);" id="growthRangeLabel"></div>
+    </div>
+    <div class="summary" id="growthSummary" style="margin-bottom:14px;">
+      <div class="card">
+        <div class="card-label">Starting Balance</div>
+        <div class="card-value neutral" id="growthStartBal">—</div>
+      </div>
+      <div class="card">
+        <div class="card-label">End Balance</div>
+        <div class="card-value neutral" id="growthEndBal">—</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total Growth</div>
+        <div class="card-value neutral" id="growthTotal">—</div>
+      </div>
+    </div>
+    <div class="growth-box" id="growthChartBox">
+      <svg id="growthSvg" width="100%" height="220" style="display:block;"></svg>
+      <div class="growth-tooltip" id="growthTooltip"></div>
+    </div>
+  </div>
+  <div class="empty-state" id="growthEmptyHint" style="display:none;padding:24px;margin-bottom:16px;">
+    <p></p>
+  </div>
+
   <div class="table-wrap">
     <table>
       <thead>
@@ -991,6 +1055,10 @@
   let activeTab = 'trades'; // 'trades' | 'symbols' | 'groups' | 'daily'
 
   const GROUP_GAP_MS = 10 * 1000; // trades closed within this many ms of the previous one join the same group
+
+  let growthPoints = []; // last-rendered account-growth chart points, for hover lookups
+  const GROWTH_VB_W = 800, GROWTH_VB_H = 220;
+  const GROWTH_PAD  = { top: 16, right: 16, bottom: 28, left: 16 };
 
   // ── Pages ──────────────────────────────────────────────────────
   // 'landing' | 'simulation' | 'copier-input' | 'copier-report' | 'copier-detail'.
@@ -1923,6 +1991,172 @@
     setCard('dailyWorstDay',   worstDay ? `${worstDay.net < 0 ? '-' : ''}${cur}${Math.abs(worstDay.net).toFixed(2)}${showOrig ? origNote(fmtPnlPlain(worstDay.netOrig)) : ''} (${worstDay.dateStr})` : '—', 'neg');
     setCard('dailyAvgPnl',     totalDays ? `${avgDaily >= 0 ? '+' : '-'}${cur}${Math.abs(avgDaily).toFixed(2)}${showOrig ? origNote(fmtPnlPlain(avgDailyOrig)) : ''}` : '—', avgDaily >= 0 ? 'pos' : 'neg');
     setCard('dailyMaxDD',      `${cur}${overallDD.toFixed(2)}${showOrig ? origNote(`${cur}${overallDDOrig.toFixed(2)}`) : ''}`, 'neg');
+
+    renderGrowthChart(trades);
+  }
+
+  // ── Account growth chart ───────────────────────────────────────
+  // Which "Account End Balance" box applies to the trades currently loaded —
+  // the simulation paste box in simulation mode, the copier paste box
+  // otherwise (copier-detail, fed by loadCopierReportTrades, is the only
+  // other mode that reaches this shared Daily tab).
+  function getAccountEndBalanceInput() {
+    const id = appMode === 'copier-detail' ? 'copierEndBalance' : 'simEndBalance';
+    const el = document.getElementById(id);
+    const v  = el ? parseFloat(el.value) : NaN;
+    return isNaN(v) ? null : v;
+  }
+
+  // Builds a chronological running-balance series that starts wherever it
+  // must to land exactly on `endBalance` after every filtered day's net P&L —
+  // i.e. account growth reconstructed backward from a known final balance.
+  function computeAccountGrowth(trades, endBalance) {
+    const days = computeDailyStats(trades).sort((a, b) => a.date - b.date);
+    if (!days.length) return null;
+
+    const totalNet     = days.reduce((s, d) => s + d.net, 0);
+    const startBalance = endBalance - totalNet;
+
+    let running = startBalance;
+    const points = days.map(d => {
+      const startOfDay = running;
+      running += d.net;
+      return {
+        dateStr: d.dateStr,
+        date: d.date,
+        balance: running,
+        growth: d.net,
+        growthPct: startOfDay !== 0 ? (d.net / Math.abs(startOfDay)) * 100 : 0,
+      };
+    });
+
+    return { startBalance, endBalance, totalNet, points };
+  }
+
+  function renderGrowthChart(trades) {
+    const wrap = document.getElementById('growthWrap');
+    const hint = document.getElementById('growthEmptyHint');
+    const endBalance = getAccountEndBalanceInput();
+
+    const growth = endBalance != null ? computeAccountGrowth(trades, endBalance) : null;
+
+    if (!growth) {
+      wrap.style.display = 'none';
+      hint.style.display = 'block';
+      hint.querySelector('p').textContent = endBalance == null
+        ? 'Enter an account end balance in the trade input box above to see account growth here.'
+        : 'No trades in the current filter range to chart.';
+      growthPoints = [];
+      return;
+    }
+
+    wrap.style.display = 'block';
+    hint.style.display = 'none';
+    growthPoints = growth.points;
+
+    const cur     = currentCurrency;
+    const pts     = growth.points;
+    const fmtSign = v => `${v >= 0 ? '+' : '-'}${cur}${Math.abs(v).toFixed(2)}`;
+
+    document.getElementById('growthStartBal').textContent = `${cur}${growth.startBalance.toFixed(2)}`;
+    document.getElementById('growthEndBal').textContent   = `${cur}${growth.endBalance.toFixed(2)}`;
+
+    const totalPct = growth.startBalance !== 0 ? (growth.totalNet / Math.abs(growth.startBalance)) * 100 : 0;
+    const totalEl  = document.getElementById('growthTotal');
+    totalEl.textContent = `${fmtSign(growth.totalNet)} (${growth.totalNet >= 0 ? '+' : ''}${totalPct.toFixed(1)}%)`;
+    totalEl.className = `card-value ${growth.totalNet >= 0 ? 'pos' : 'neg'}`;
+
+    document.getElementById('growthRangeLabel').textContent = pts.length > 1
+      ? `${pts[0].dateStr} → ${pts[pts.length - 1].dateStr}`
+      : pts[0].dateStr;
+
+    // ── Plot ──
+    const balances = pts.map(p => p.balance).concat([growth.startBalance]);
+    let minB = Math.min(...balances), maxB = Math.max(...balances);
+    if (minB === maxB) { minB -= 1; maxB += 1; } // avoid a zero-height range
+    const padB = (maxB - minB) * 0.08;
+    minB -= padB; maxB += padB;
+
+    const innerW = GROWTH_VB_W - GROWTH_PAD.left - GROWTH_PAD.right;
+    const innerH = GROWTH_VB_H - GROWTH_PAD.top  - GROWTH_PAD.bottom;
+    const xAt = i => pts.length > 1 ? GROWTH_PAD.left + (i / (pts.length - 1)) * innerW : GROWTH_PAD.left + innerW / 2;
+    const yAt = v => GROWTH_PAD.top + innerH - ((v - minB) / (maxB - minB)) * innerH;
+
+    const lineD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i).toFixed(2)} ${yAt(p.balance).toFixed(2)}`).join(' ');
+    const baseY = (GROWTH_PAD.top + innerH).toFixed(2);
+    const areaD = `${lineD} L ${xAt(pts.length - 1).toFixed(2)} ${baseY} L ${xAt(0).toFixed(2)} ${baseY} Z`;
+
+    const dots = pts.map((p, i) =>
+      `<circle cx="${xAt(i).toFixed(2)}" cy="${yAt(p.balance).toFixed(2)}" r="3" fill="${p.growth >= 0 ? 'var(--green)' : 'var(--red)'}" />`
+    ).join('');
+
+    // A handful of x-axis date labels so it doesn't get crowded on long ranges
+    const maxLabels = 6;
+    const labelStep = Math.max(1, Math.ceil(pts.length / maxLabels));
+    const xLabels = pts.map((p, i) => (i % labelStep === 0 || i === pts.length - 1)
+      ? `<text x="${xAt(i).toFixed(2)}" y="${GROWTH_VB_H - 8}" text-anchor="middle" font-size="10" fill="var(--muted)">${p.dateStr.slice(0, 5)}</text>`
+      : ''
+    ).join('');
+
+    const zeroLineY = (minB <= 0 && maxB >= 0) ? yAt(0) : null;
+
+    const svg = document.getElementById('growthSvg');
+    svg.setAttribute('viewBox', `0 0 ${GROWTH_VB_W} ${GROWTH_VB_H}`);
+    svg.innerHTML = `
+      <defs>
+        <linearGradient id="growthFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.25" />
+          <stop offset="100%" stop-color="var(--accent)" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      ${zeroLineY != null ? `<line x1="${GROWTH_PAD.left}" y1="${zeroLineY.toFixed(2)}" x2="${GROWTH_VB_W - GROWTH_PAD.right}" y2="${zeroLineY.toFixed(2)}" stroke="var(--border)" stroke-dasharray="4 4" />` : ''}
+      <path d="${areaD}" fill="url(#growthFill)" stroke="none" />
+      <path d="${lineD}" fill="none" stroke="var(--accent)" stroke-width="2" />
+      ${dots}
+      ${xLabels}
+    `;
+
+    attachGrowthHover();
+  }
+
+  // Single mousemove listener maps cursor x → nearest day (via the shared
+  // viewBox coordinate space) rather than per-point hit targets, so the
+  // tooltip tracks smoothly across the whole chart width.
+  function attachGrowthHover() {
+    const svg     = document.getElementById('growthSvg');
+    const tooltip = document.getElementById('growthTooltip');
+    const box     = document.getElementById('growthChartBox');
+
+    svg.onmousemove = e => {
+      if (!growthPoints.length) return;
+      const svgRect = svg.getBoundingClientRect();
+      const innerW  = GROWTH_VB_W - GROWTH_PAD.left - GROWTH_PAD.right;
+      const relX    = ((e.clientX - svgRect.left) / svgRect.width) * GROWTH_VB_W;
+      const t       = growthPoints.length > 1
+        ? Math.min(1, Math.max(0, (relX - GROWTH_PAD.left) / innerW))
+        : 0;
+      const idx = Math.round(t * (growthPoints.length - 1));
+      const p   = growthPoints[idx];
+      if (!p) return;
+
+      const cur  = currentCurrency;
+      const sign = p.growth >= 0 ? '+' : '-';
+      tooltip.innerHTML = `
+        <div style="font-weight:600;margin-bottom:4px;">${p.dateStr}</div>
+        <div>Balance: <strong>${cur}${p.balance.toFixed(2)}</strong></div>
+        <div class="${p.growth >= 0 ? 'pos' : 'neg'}">Day: ${sign}${cur}${Math.abs(p.growth).toFixed(2)} (${sign}${Math.abs(p.growthPct).toFixed(2)}%)</div>`;
+
+      const boxRect = box.getBoundingClientRect();
+      tooltip.style.display = 'block';
+      let left = e.clientX - boxRect.left + 14;
+      const top = e.clientY - boxRect.top - 10;
+      const tw = tooltip.offsetWidth;
+      if (left + tw > boxRect.width) left = e.clientX - boxRect.left - tw - 14;
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top  = `${top}px`;
+    };
+
+    svg.onmouseleave = () => { tooltip.style.display = 'none'; };
   }
 
   function sortDailyBy(key) {
@@ -2196,6 +2430,7 @@
     document.getElementById('errorBanner').style.display = 'none';
     setParseStatus(null, '');
     document.getElementById('xlsxImport').value = '';
+    document.getElementById('simEndBalance').value = '';
     document.getElementById('currencyBadge').style.display = 'none';
     clearSimulation();
     showEmpty();
@@ -2369,15 +2604,21 @@
   }
 
   // ── Copier Report ──────────────────────────────────────────────
-  // Same 3-line trade block as parseTrades, but each is preceded by a line
-  // naming the provider it was copied from:
+  // Same 3-line trade block as parseTrades, but each is *usually* preceded
+  // by a line naming the provider it was copied from:
   //   <provider name>
   //   USD 0.07
   //   Buy0.01 XAUUSD @ 4329.71
   //   14/08/2026 06:31:25 | 90623945
-  // We scan forward for the action line (unambiguous), then look one line
-  // back for the P&L and two lines back for the provider name, mirroring
-  // parseTrades' "scan for an anchor" approach.
+  // The provider name line is sometimes missing from the source data, so
+  // the block collapses to just P&L/action/date. We scan forward for the
+  // action line (unambiguous), then look one line back for the P&L and two
+  // lines back for a possible provider name, mirroring parseTrades'
+  // "scan for an anchor" approach. If that two-back line is itself another
+  // trade's date/ID line, there's no provider name for this trade and it's
+  // grouped under UNNAMED_PROVIDER instead.
+  const UNNAMED_PROVIDER = '(Unnamed)';
+
   function parseCopierTrades(raw) {
     const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const trades = [];
@@ -2391,21 +2632,26 @@
       const m1 = lines[i].match(RE_START);
       if (!m1) { i++; continue; }
 
-      if (i < 2 || i + 1 >= lines.length) {
-        errors.push(`Line ${i+1}: trade "${lines[i]}" found but its provider/P&L/date lines are missing.`);
+      if (i < 1 || i + 1 >= lines.length) {
+        errors.push(`Line ${i+1}: trade "${lines[i]}" found but its P&L/date lines are missing.`);
         i++;
         continue;
       }
 
-      const providerLine = lines[i - 2];
       const pnlResult = parsePnlLine(lines[i - 1]);
       const m3 = lines[i + 1].match(RE_DATETIME);
 
       if (!pnlResult || !m3) {
-        errors.push(`Lines ${i-1}–${i+2}: found a trade action line but could not parse its provider/P&L/date lines.`);
+        errors.push(`Lines ${i}–${i+2}: found a trade action line but could not parse its P&L/date lines.`);
         i++;
         continue;
       }
+
+      // A provider name is only present if the line two back isn't itself
+      // the previous trade's date/ID line (which happens when this trade
+      // has no provider name of its own).
+      const hasProviderLine = i >= 2 && !RE_DATETIME.test(lines[i - 2]);
+      const providerLine = hasProviderLine ? lines[i - 2] : UNNAMED_PROVIDER;
 
       const direction  = m1[1];
       const volume     = parseFloat(m1[2]);
@@ -2451,6 +2697,7 @@
     document.getElementById('copierRawInput').value = '';
     document.getElementById('copierErrorBanner').style.display = 'none';
     setCopierParseStatus(null, '');
+    document.getElementById('copierEndBalance').value = '';
   }
 
   function parseCopierAndRender() {
